@@ -1,0 +1,227 @@
+module mds-security {
+  namespace "com:gemds:security";
+  prefix sec;
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     common security data elements.
+     \t\t
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-07-25 {
+    description
+      "Removed CCM and GCM AES encryption algorithms.";
+  }
+  revision 2015-05-15 {
+    description
+      "Added a length to word String.";
+  }
+  revision 2013-05-13 {
+    description
+      "Updated enumberation names to allow for auto code generation. Updated
+       parameter requirements. Added word-string.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-10-30 {
+    description
+      "Initial revision.";
+  }
+
+  typedef encryption-algo {
+    type enumeration {
+      enum "3des" {
+        description
+          "168 bit 3DES-EDE-CBC";
+      }
+      enum "aes128-cbc" {
+        description
+          "128 bit AES-CBC";
+      }
+      enum "aes192-cbc" {
+        description
+          "192 bit AES-CBC";
+      }
+      enum "aes256-cbc" {
+        description
+          "256 bit AES-CBC";
+      }
+      enum "aes128-ctr" {
+        description
+          "128 bit AES-COUNTER";
+      }
+      enum "aes192-ctr" {
+        description
+          "192 bit AES-COUNTER";
+      }
+      enum "aes256-ctr" {
+        description
+          "256 bit AES-COUNTER";
+      }
+      enum "aes128-gcm-16" {
+        description
+          "128 bit AES-GCM with 128 bit ICV";
+      }
+      enum "aes192-gcm-16" {
+        description
+          "192 bit AES-GCM with 128 bit ICV";
+      }
+      enum "aes256-gcm-16" {
+        description
+          "256 bit AES-GCM with 128 bit ICV";
+      }
+    }
+    description
+      "Symmetric key encryption algorithm";
+  }
+
+  typedef mac-algo {
+    type enumeration {
+      enum "sha1-hmac" {
+        description
+          "SHA1 HMAC";
+      }
+      enum "sha256-hmac" {
+        description
+          "SHA256 HMAC";
+      }
+      enum "sha384-hmac" {
+        description
+          "SHA384 HMAC";
+      }
+      enum "sha512-hmac" {
+        description
+          "SHA512 HMAC";
+      }
+    }
+    description
+      "Message Authentication Code (MAC) algorithm";
+  }
+
+  typedef hash-algo {
+    type enumeration {
+      enum "sha1" {
+        description
+          "SHA1";
+      }
+      enum "sha256" {
+        description
+          "SHA256";
+      }
+      enum "sha384" {
+        description
+          "SHA384";
+      }
+      enum "sha512" {
+        description
+          "SHA512";
+      }
+    }
+    description
+      "HASH algorithm";
+  }
+
+  typedef dh-group {
+    type enumeration {
+      enum "dh1" {
+        description
+          "group 1 modp768";
+      }
+      enum "dh2" {
+        description
+          "group 2 modp1024";
+      }
+      enum "dh5" {
+        description
+          "group 5 modp1536";
+      }
+      enum "dh14" {
+        description
+          "group 14 modp2048";
+      }
+      enum "dh15" {
+        description
+          "group 15 modp3072";
+      }
+    }
+    description
+      "Diffie Hellman groups";
+  }
+
+  grouping ciphersuite {
+    leaf encryption-algo {
+      type encryption-algo;
+      default "aes128-cbc";
+      description
+        "encryption algorithm";
+    }
+    leaf mac-algo {
+      type mac-algo;
+      default "sha256-hmac";
+      description
+        "message authentication algorithm";
+    }
+    leaf dh-group {
+      type dh-group;
+      description
+        "dh group";
+    }
+  }
+
+  grouping pki {
+    leaf cert-type {
+      type enumeration {
+        enum "rsa" {
+          description
+            "PKI using RSA keys and certificates";
+        }
+        enum "ecdsa" {
+          description
+            "PKI using ECDSA keys and certificates";
+        }
+      }
+    }
+    leaf cert-id {
+      type string;
+      mandatory true;
+      description
+        "certificate identifier";
+    }
+    leaf key-id {
+      type string;
+      mandatory true;
+      description
+        "private key identifier";
+    }
+    leaf ca-cert-id {
+      type string;
+      mandatory true;
+      description
+        "ca-certificate chain identifier";
+    }
+  }
+
+  typedef word-string {
+    type string {
+      length "1..255";
+      pattern "[a-zA-Z0-9_\\-]+";
+    }
+    description
+      "This string type allows only word charaters
+       and a hyphen. This should be used for list keys
+       and any place where a string input can get passed
+       on to command execution function";
+  }
+}

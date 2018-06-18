@@ -1,0 +1,99 @@
+module mds-service-ip-passthrough {
+  namespace "com:gemds:services:ip-passthrough";
+  prefix ip-passthrough;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-services {
+    prefix serv;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring and monitoring IP passthrough service.
+     
+     Copyright (c) 2016 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-01-15 {
+    description
+      "Initial.";
+  }
+
+  grouping service {
+    leaf protocol {
+      type enumeration {
+        enum "tcp";
+        enum "udp";
+      }
+      description
+        "The protocol type for the service.";
+    }
+    leaf port {
+      type uint16;
+      description
+        "The port number for the service.";
+    }
+  }
+
+  augment "/serv:services" {
+    container ip-passthrough {
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to run IP passthrough service.";
+      }
+      leaf from-interface {
+        type string;
+        default "Cell";
+        description
+          "The interface from which the IP address is taken for passing through
+           to the locally connected device.";
+      }
+      leaf to-interface {
+        type string;
+        default "Bridge";
+        description
+          "The interface to which the local device is connected. 
+           The local device receives the passsed through address via DHCP.";
+      }
+      list local-service {
+        key "name";
+        leaf name {
+          type string;
+          description
+            "The ASCII string identifying the service.";
+        }
+        leaf protocol {
+          type enumeration {
+            enum "tcp";
+            enum "udp";
+          }
+          mandatory true;
+          description
+            "The protocol type for the service.";
+        }
+        leaf port {
+          type uint16;
+          mandatory true;
+          description
+            "The port number for the service.";
+        }
+        description
+          "The traffic received for these services is processed locally 
+           instead getting passed through to the connected LAN device.";
+      }
+    }
+  }
+}

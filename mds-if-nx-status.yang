@@ -1,0 +1,1239 @@
+module mds-if-nx-status {
+  namespace "com:gemds:mds-if-nx-status";
+  prefix mds_nx_status;
+
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import mds-if-nx-common {
+    prefix mds_nx_common;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of common YANG definitions for
+     NX/LN devices found in MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-11-15 {
+    description
+      "Added SNR for NX and added route information for both LN and NX.";
+  }
+  revision 2016-09-21 {
+    description
+      "Added error init status, and fixed spelling error.";
+  }
+  revision 2015-08-21 {
+    description
+      "Added last packet stats for NX interface and fixed some descriptions.";
+  }
+  revision 2015-08-14 {
+    description
+      "Set units to uniform style. Moved rate to last-rx-packet container.";
+  }
+  revision 2015-06-12 {
+    description
+      "Add 'disassociated' to link status. Collect hardware-info into a container";
+  }
+  revision 2015-04-13 {
+    description
+      "Changes to suport LN status.";
+  }
+  revision 2015-03-27 {
+    description
+      "Added narrowband support.";
+  }
+  revision 2014-05-13 {
+    description
+      "Initial revision.";
+  }
+
+  feature orbit-mpr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MPR family.";
+  }
+
+  typedef nx-alarm-flags {
+    type bits {
+      bit not-calibrated {
+        position 23;
+        description
+          "NIC is missing factory calibration";
+      }
+      bit synthesizer-error {
+        position 22;
+        description
+          "NIC synthesizer is out of lock";
+      }
+      bit vswr-fault {
+        position 16;
+        description
+          "VSWR is above threshold";
+      }
+      bit test {
+        position 1;
+        description
+          "Set to test the alarm system";
+      }
+      bit temperature {
+        position 0;
+        description
+          "Temperature is above threshold";
+      }
+    }
+    description
+      "Alarms supported by the NIC";
+  }
+
+  typedef link-status-type {
+    type enumeration {
+      enum "initializing" {
+        value 0;
+        description
+          "Performing initalizations";
+      }
+      enum "scanning" {
+        value 1;
+        description
+          "Scanning for avalible access points";
+      }
+      enum "negotiating" {
+        value 2;
+        description
+          "Performing capabilities negotations";
+      }
+      enum "authenticating" {
+        value 3;
+        description
+          "Performing device authentication";
+      }
+      enum "associated" {
+        value 4;
+        description
+          "Association Completed";
+      }
+      enum "disassociated" {
+        value 5;
+        description
+          "Not Associated";
+      }
+    }
+    description
+      "Types of link status";
+  }
+
+  typedef init-status-type {
+    type enumeration {
+      enum "off" {
+        value 0;
+        description
+          "Not operating";
+      }
+      enum "initializing" {
+        value 1;
+        description
+          "powering the NIC";
+      }
+      enum "discovering" {
+        value 2;
+        description
+          "Determining the NIC address";
+      }
+      enum "reprogramming" {
+        value 3;
+        description
+          "Programming the NIC firmware";
+      }
+      enum "configuring" {
+        value 4;
+        description
+          "Configuring the NIC";
+      }
+      enum "complete" {
+        value 5;
+        description
+          "Initalization complete";
+      }
+      enum "error" {
+        value 6;
+        description
+          "Could not initialize the NIC";
+      }
+    }
+    description
+      "Types of initialization status";
+  }
+
+  typedef modulation-status {
+    type enumeration {
+      enum "unknown" {
+        value 0;
+        description
+          "Unknown modulation";
+      }
+      enum "qpsk" {
+        value 4;
+        description
+          "Quadrature phase-shift keying";
+      }
+      enum "qam16" {
+        value 16;
+        description
+          "Quadrature amplitude modulation with 16 symbols";
+      }
+      enum "qam64" {
+        value 64;
+        description
+          "Quadrature amplitude modulation with 64 symbols";
+      }
+      enum "9600-3FSK" {
+        description
+          "";
+      }
+      enum "9600M-3FSK" {
+        description
+          "";
+      }
+      enum "19200-3FSK" {
+        description
+          "";
+      }
+      enum "19200M-3FSK" {
+        description
+          "";
+      }
+      enum "3200-3FSK" {
+        description
+          "";
+      }
+      enum "19200E-7FSK" {
+        description
+          "";
+      }
+      enum "19200N-7FSK" {
+        description
+          "";
+      }
+      enum "38400N-7FSK" {
+        description
+          "";
+      }
+    }
+  }
+
+  grouping nx_db_perf {
+    leaf avg-rssi {
+      type int32;
+      units "dBm";
+      description
+        "Average received signal strength index";
+    }
+    leaf avg-lqi {
+      type uint32;
+      description
+        "Average link quality index";
+    }
+    leaf avg-snr {
+      type uint32;
+      description
+        "Average signal to noise ratio";
+    }
+  }
+
+  grouping ln_db_perf {
+    leaf rssi {
+      type int32;
+      units "dBm";
+      description
+        "Received signal strength index";
+    }
+    leaf evm {
+      type uint32;
+      description
+        "Error vector magnitude";
+    }
+    leaf rx-modulation {
+      type modulation-status;
+      description
+        "The last detected modulation the NIC uses";
+    }
+  }
+
+  grouping lw_db_perf {
+    leaf rssi {
+      type int32;
+      units "dBm";
+      description
+        "Received signal strength index";
+    }
+    leaf snr {
+      type uint32;
+      description
+        "Error vector magnitude";
+    }
+    leaf rx-modulation {
+      type mds_nx_common:lw-modulation;
+      description
+        "The last detected modulation the NIC uses";
+    }
+  }
+
+  grouping nx_db_common {
+    leaf address {
+      type yang:mac-address;
+    }
+    leaf ip-address {
+      type inet:ip-address;
+    }
+    leaf time-to-live {
+      type uint32;
+      units "seconds";
+      description
+        "Time left until this entry is aged out";
+    }
+  }
+
+  grouping nx_db_stats {
+    container device-stats {
+      leaf tx-packets {
+        type uint32;
+        description
+          "";
+      }
+      leaf tx-bytes {
+        type uint32;
+        description
+          "";
+      }
+      leaf rx-packets {
+        type uint32;
+        description
+          "";
+      }
+      leaf rx-bytes {
+        type uint32;
+        description
+          "";
+      }
+      leaf tx-error {
+        type uint32;
+        description
+          "";
+      }
+      leaf rx-error {
+        type uint32;
+        description
+          "";
+      }
+      leaf tx-drop {
+        type uint32;
+        description
+          "";
+      }
+      leaf rx-drop {
+        type uint32;
+        description
+          "";
+      }
+    }
+  }
+
+  grouping driver-stats {
+    leaf tx-encrypt-error {
+      type uint32;
+      description
+        "Error in trying to encrypt the packet";
+    }
+    leaf tx-auth-error {
+      type uint32;
+      description
+        "Droping data to unauthorized node.";
+    }
+    leaf tx-size-error {
+      type uint32;
+      description
+        "Packet too large for radio link.";
+    }
+    leaf tx-memory-error {
+      type uint32;
+      description
+        "Error allocating memory.";
+    }
+    leaf tx-timeout-error {
+      type uint32;
+      description
+        "Timed out when trying to send data.";
+    }
+    leaf tx-compress-error {
+      type uint32;
+      description
+        "Error commpressing data.";
+    }
+    leaf tx-header-compress-error {
+      type uint32;
+      description
+        "Error commpressing header data.";
+    }
+    leaf rx-bad-device-error {
+      type uint32;
+      description
+        "Recieved data from unknown device.";
+    }
+    leaf rx-decrypt-error {
+      type uint32;
+      description
+        "Error in trying to decrypt the packet.";
+    }
+    leaf rx-compress-error {
+      type uint32;
+      description
+        "Error in trying to decompress the packet.";
+    }
+    leaf rx-eapol-error {
+      type uint32;
+      description
+        "Got missidentified eapol packet";
+    }
+    leaf rx-header-compress-error {
+      type uint32;
+      description
+        "Error in trying to decompress the packet header.";
+    }
+    leaf header-compression-rate {
+      type int32;
+      description
+        "Space savings by using header compression";
+    }
+    leaf data-compression-rate {
+      type int32;
+      description
+        "Space savings by using data compression";
+    }
+  }
+
+  grouping ethif-stats {
+    leaf rx-dropped {
+      type uint32;
+      description
+        "Number of frames received on the Ethernet interface
+         that were dropped";
+    }
+    leaf tx-dropped {
+      type uint32;
+      description
+        "Number of frames supposed to be sent to the Ethernet
+         interface but that were dropped";
+    }
+    leaf rx-unavailable {
+      type uint32;
+      description
+        "Number of times a DMA descriptor was not available";
+    }
+    leaf tx-unavailable {
+      type uint32;
+      description
+        "Number of times a DMA descriptor was not available";
+    }
+    leaf resource-failures {
+      type uint32;
+      description
+        "Number of times the Ethernet interface 
+         re-initialization could not be started";
+    }
+    leaf init-failures {
+      type uint32;
+      description
+        "Number of times the Ethernet interface 
+         could not be brought up";
+    }
+    leaf rx-bad-mtu {
+      type uint32;
+      description
+        "Number of frames received on the Ethernet 
+         interface that were dropped because they 
+         exceeded the MTU";
+    }
+    leaf tx-bad-mtu {
+      type uint32;
+      description
+        "Number of frames supposed to be sent to 
+         the Ethernet interface but that were dropped 
+         because they exceeded the MTU";
+    }
+    leaf wire-rx-cnt {
+      type uint32;
+      description
+        "Number of frames received on the ethernet interface";
+    }
+    leaf wire-tx-cnt {
+      type uint32;
+      description
+        "Number of frames transmitted on the ethernet 
+         interface";
+    }
+  }
+
+  grouping nicsvcs-group {
+    leaf nic-tx-dropped {
+      type uint32;
+      description
+        "Number of frames dropped prior to them being sent to 
+         the Ethernet";
+    }
+    leaf data-tx-dropped {
+      type uint32;
+      description
+        "Number of frames dropped prior to them being sent to 
+         the data process for delivery to the Ethernet interface. 
+         OTA frames are being received faster than expected";
+    }
+    leaf mgmt-rx-dropped {
+      type uint32;
+      description
+        "Number of frames dropped prior to them being sent to 
+         the management process. A new mgmt frame was probably 
+         received on the Ethernet interface before the previous 
+         one was dealt with";
+    }
+    leaf data-rx-dropped {
+      type uint32;
+      description
+        "Number of frames dropped prior to them being sent to 
+         the MAC for OTA transmission. A new data frame was 
+         probably received on the Ethernet/USB interface before 
+         the previous one was dealt with";
+    }
+    leaf eth-lb-cnt {
+      type uint32;
+      description
+        "Number of loopback frames processed on the Ethernet interface";
+    }
+    leaf vcp-lb-cnt {
+      type uint32;
+      description
+        "Number of loopback frames processed on the USB interface";
+    }
+    leaf mgmt-set-cnt {
+      type uint32;
+      description
+        "Number of management set frames processed";
+    }
+    leaf mgmt-get-cnt {
+      type uint32;
+      description
+        "Number of management get frames processed";
+    }
+  }
+
+  grouping nx-status {
+    description
+      "The status of the GE MDS NX interface";
+    leaf link-status {
+      type link-status-type;
+      description
+        "Link State";
+    }
+    leaf init-status {
+      type init-status-type;
+      description
+        "State of the NIC Initialization";
+    }
+    leaf current-device-mode {
+      type mds_nx_common:running-device-type;
+      description
+        "The current devive mode";
+    }
+    leaf current-modem {
+      type mds_nx_common:modem-type;
+      description
+        "The current operating modem";
+    }
+    leaf alarms {
+      type nx-alarm-flags;
+      description
+        "The current NIC alarms";
+    }
+    leaf serial-number {
+      type uint32;
+      description
+        "Serial Number";
+    }
+    leaf firmware-revision {
+      type string {
+        length "0..32";
+      }
+      description
+        "NIC Firmware Revision";
+    }
+    leaf active-nic {
+      if-feature orbit-mpr;
+      type boolean;
+      description
+        "If the NIC is active";
+    }
+    leaf hardware-id {
+      type uint8;
+      description
+        "The Hardware ID";
+    }
+    leaf hardware-revision {
+      type uint8;
+      description
+        "The Hardware Revision";
+    }
+    leaf temperature {
+      type int16;
+      description
+        "The transceiver temperature";
+    }
+    container ap-info {
+      leaf ap-address {
+        type yang:mac-address;
+        description
+          "MAC address of access point this device is linked to";
+      }
+      leaf ip-address {
+        type inet:ip-address;
+        description
+          "IP address of access point this device is linked to";
+      }
+      leaf connected-time {
+        type int32;
+        units "seconds";
+        description
+          "Time elapsed since link established";
+      }
+      uses nx_db_perf;
+      leaf all-ip-addresses {
+        type string;
+      }
+    }
+    container last-rx-packet {
+      leaf last-rssi {
+        type int8;
+        units "dBm";
+        description
+          "Received signal strength index";
+      }
+      leaf last-lqi {
+        type uint8;
+        description
+          "Error vector magnitude";
+      }
+      leaf last-snr {
+        type uint8;
+        description
+          "signal to noise ratio";
+      }
+      leaf last-channel {
+        type uint8;
+        description
+          "The last detected modulation the NIC uses";
+      }
+      description
+        "The last packet recieved over the air. If a
+         packet has not been recieved, the stats will
+         be set to invalid values.";
+    }
+    container ethif-stats {
+      description
+        "NIC's ethernet interface statistics";
+      uses ethif-stats;
+    }
+    container driver-stats {
+      description
+        "Driver's error statistics";
+      uses driver-stats;
+    }
+    container nicsvcs-stats {
+      description
+        "NIC's managment statistics";
+      uses nicsvcs-group;
+    }
+    container mac-stats {
+      description
+        "NIC's MAC statistics";
+      leaf tx-success {
+        type uint32;
+        description
+          "Successful transmissions";
+      }
+      leaf tx-fail {
+        type uint32;
+        description
+          "Failed transmissions, TTL expired or retry count exceeded";
+      }
+      leaf tx-queue-full {
+        type uint32;
+        description
+          "Failed transmissions, MAC queue full";
+      }
+      leaf tx-no-sync {
+        type uint32;
+        description
+          "Packets dropped because the MAC is not synchronized";
+      }
+      leaf tx-no-assoc {
+        type uint32;
+        description
+          "Packets dropped because the MAC is not associated";
+      }
+      leaf tx-error {
+        type uint32;
+        description
+          "Packets dropped for other reasons. Currently unused";
+      }
+      leaf tx-retry {
+        type uint32;
+        description
+          "Re-transmission count due to to previously unsuccessful transmission";
+      }
+      leaf rx-success {
+        type uint32;
+        description
+          "Valid packet received";
+      }
+      leaf sync-check-error {
+        type uint32;
+        description
+          "Lost synchronization";
+      }
+      leaf sync-change {
+        type uint32;
+        description
+          "Sychronization changed or forced drop";
+      }
+    }
+    list connected-remotes {
+      key "address";
+      description
+        "The list of connected remotes";
+      uses nx_db_common;
+      leaf link-status {
+        type link-status-type;
+        description
+          "The status of the connection to a remote device";
+      }
+      leaf nic-id {
+        type uint16;
+        description
+          "The RF connection identifier for the connected remote device";
+      }
+      uses nx_db_perf;
+      uses nx_db_stats;
+      leaf all-ip-addresses {
+        type string;
+      }
+    }
+    list endpoints {
+      key "address";
+      description
+        "The list of endpoints";
+      uses nx_db_common;
+      leaf remote-address {
+        type yang:mac-address;
+        description
+          "The MAC address of the remote device servicing this endpoint";
+      }
+      uses nx_db_stats;
+    }
+    list routes {
+      key "nic-id";
+      description
+        "The list of routes";
+      leaf nic-id {
+        type uint16;
+        description
+          "The RF connection identifier for the connected remote device";
+      }
+      leaf ip-address {
+        type inet:ip-address;
+      }
+      leaf hops {
+        type uint8;
+        description
+          "The number of hops to reach this node from the access point";
+      }
+      leaf connected-radios {
+        type string;
+        description
+          "The radios connected to this device.";
+      }
+      leaf route {
+        type string;
+        description
+          "The path through the system to reach the AP.";
+      }
+    }
+    list active-channels {
+      key "channel";
+      description
+        "The list of channels";
+      leaf channel {
+        type uint8;
+      }
+      leaf frequency {
+        type string;
+        units "MHz";
+      }
+      uses nx_db_perf;
+    }
+  }
+
+  grouping ln-status {
+    description
+      "The status of the GE MDS narrowband interface";
+    leaf link-status {
+      type link-status-type;
+      description
+        "Link State";
+    }
+    leaf init-status {
+      type init-status-type;
+      description
+        "State of the NIC Initialization";
+    }
+    leaf current-device-mode {
+      type mds_nx_common:running-device-type;
+      description
+        "The current devive mode";
+    }
+    leaf active-nic {
+      if-feature orbit-mpr;
+      type boolean;
+      description
+        "If the NIC is active";
+    }
+    leaf alarms {
+      type nx-alarm-flags;
+      description
+        "The current NIC alarms";
+    }
+    leaf firmware-revision {
+      type string {
+        length "0..32";
+      }
+      description
+        "NIC Firmware Revision";
+    }
+    leaf temperature {
+      type int16;
+      description
+        "The transceiver temperature";
+    }
+    container ethif-stats {
+      description
+        "NIC's ethernet interface statistics";
+      uses ethif-stats;
+    }
+    container driver-stats {
+      description
+        "Driver's error statistics";
+      uses driver-stats;
+    }
+    container nicsvcs-stats {
+      description
+        "NIC's managment statistics";
+      uses nicsvcs-group;
+    }
+    container modem-stats {
+      leaf modem-tx-success {
+        type uint32;
+        description
+          "Number of packets successfully transmitted by the modem";
+      }
+      leaf modem-tx-error {
+        type uint32;
+        description
+          "Number of transmit errors reported by the modem";
+      }
+      leaf modem-rx-success {
+        type uint32;
+        description
+          "Number of packets successfully received by the modem";
+      }
+      leaf modem-rx-error {
+        type uint32;
+        description
+          "Number of receive errors reported by the modem";
+      }
+    }
+    container mac-stats {
+      leaf mac-tx-success {
+        type uint32;
+        description
+          "Successful transmissions";
+      }
+      leaf mac-tx-queue-full {
+        type uint32;
+        description
+          "Failed transmissions due to a full MAC queue";
+      }
+      leaf mac-tx-error {
+        type uint32;
+        description
+          "Failed transmissions due to other reasons";
+      }
+      leaf mac-tx-retry {
+        type uint32;
+        description
+          "Retransmitted packets due to previous unsuccessful transmission";
+      }
+      leaf mac-rx-success {
+        type uint32;
+        description
+          "Number of valid packets received";
+      }
+      leaf mac-rx-error {
+        type uint32;
+        description
+          "Received packets dropped due to error";
+      }
+    }
+    container ap-info {
+      leaf ap-address {
+        type yang:mac-address;
+        description
+          "MAC address of access point this device is linked to";
+      }
+      leaf ip-address {
+        type inet:ip-address;
+        description
+          "IP address of access point this device is linked to";
+      }
+      leaf connected-time {
+        type int32;
+        units "seconds";
+        description
+          "Time elapsed since link established";
+      }
+      uses ln_db_perf;
+      leaf all-ip-addresses {
+        type string;
+      }
+    }
+    container last-rx-packet {
+      leaf last-rssi {
+        type int8;
+        units "dBm";
+        description
+          "Received signal strength index";
+      }
+      leaf last-evm {
+        type uint8;
+        description
+          "Error vector magnitude";
+      }
+      leaf last-modulation {
+        type modulation-status;
+        description
+          "The last detected modulation the NIC uses";
+      }
+      leaf rate {
+        type string {
+          length "0..16";
+        }
+        units "kbps";
+        description
+          "The nominal over the air rate for the configuration";
+      }
+      description
+        "The last packet recieved over the air. If a
+         packet has not been recieved, the stats will
+         be set to invalid values.";
+    }
+    list connected-remotes {
+      key "address";
+      description
+        "The list of connected remotes";
+      uses nx_db_common;
+      leaf link-status {
+        type link-status-type;
+        description
+          "The status of the connection to a remote device";
+      }
+      uses ln_db_perf;
+      uses nx_db_stats;
+      leaf nic-id {
+        type uint16;
+        description
+          "The RF connection identifier for the connected remote device";
+      }
+      leaf all-ip-addresses {
+        type string;
+      }
+    }
+    list endpoints {
+      key "address";
+      description
+        "The list of endpoints";
+      uses nx_db_common;
+      leaf remote-address {
+        type yang:mac-address;
+        description
+          "The MAC address of the remote device servicing this endpoint";
+      }
+      uses nx_db_stats;
+    }
+    list routes {
+      key "nic-id";
+      description
+        "The list of routes";
+      leaf nic-id {
+        type uint16;
+        description
+          "The RF connection identifier for the connected remote device";
+      }
+      leaf ip-address {
+        type inet:ip-address;
+      }
+      leaf hops {
+        type uint8;
+        description
+          "The number of hops to reach this node from the access point";
+      }
+      leaf connected-radios {
+        type string;
+        description
+          "The radios connected to this device.";
+      }
+      leaf route {
+        type string;
+        description
+          "The path through the system to reach the AP.";
+      }
+    }
+    container hardware-info {
+      leaf serial-number {
+        type uint32;
+        description
+          "Serial Number";
+      }
+      leaf hardware-id {
+        type uint8;
+        description
+          "The Hardware ID";
+      }
+      leaf hardware-revision {
+        type uint8;
+        description
+          "The Hardware Revision";
+      }
+    }
+  }
+
+  grouping lw-status {
+    description
+      "The status of the GE MDS narrowband interface";
+    leaf link-status {
+      type link-status-type;
+      description
+        "Link State";
+    }
+    leaf init-status {
+      type init-status-type;
+      description
+        "State of the NIC Initialization";
+    }
+    leaf current-device-mode {
+      type mds_nx_common:running-device-type;
+      description
+        "The current devive mode";
+    }
+    leaf active-nic {
+      if-feature orbit-mpr;
+      type boolean;
+      description
+        "If the NIC is active";
+    }
+    leaf alarms {
+      type nx-alarm-flags;
+      description
+        "The current NIC alarms";
+    }
+    leaf firmware-revision {
+      type string {
+        length "0..32";
+      }
+      description
+        "NIC Firmware Revision";
+    }
+    leaf temperature {
+      type int16;
+      description
+        "The transceiver temperature";
+    }
+    container ethif-stats {
+      description
+        "NIC's ethernet interface statistics";
+      uses ethif-stats;
+    }
+    container nicsvcs-stats {
+      description
+        "NIC's managment statistics";
+      uses nicsvcs-group;
+    }
+    container modem-stats {
+      leaf modem-tx-success {
+        type uint32;
+        description
+          "Number of packets successfully transmitted by the modem";
+      }
+      leaf modem-tx-error {
+        type uint32;
+        description
+          "Number of transmit errors reported by the modem";
+      }
+      leaf modem-rx-success {
+        type uint32;
+        description
+          "Number of packets successfully received by the modem";
+      }
+      leaf modem-rx-error {
+        type uint32;
+        description
+          "Number of receive errors reported by the modem";
+      }
+    }
+    container mac-stats {
+      leaf mac-tx-success {
+        type uint32;
+        description
+          "Successful transmissions";
+      }
+      leaf mac-tx-queue-full {
+        type uint32;
+        description
+          "Failed transmissions due to a full MAC queue";
+      }
+      leaf mac-tx-error {
+        type uint32;
+        description
+          "Failed transmissions due to other reasons";
+      }
+      leaf mac-tx-retry {
+        type uint32;
+        description
+          "Retransmitted packets due to previous unsuccessful transmission";
+      }
+      leaf mac-rx-success {
+        type uint32;
+        description
+          "Number of valid packets received";
+      }
+      leaf mac-rx-error {
+        type uint32;
+        description
+          "Received packets dropped due to error";
+      }
+    }
+    container ap-info {
+      leaf ap-address {
+        type yang:mac-address;
+        description
+          "MAC address of access point this device is linked to";
+      }
+      leaf ip-address {
+        type inet:ip-address;
+        description
+          "IP address of access point this device is linked to";
+      }
+      leaf connected-time {
+        type int32;
+        units "seconds";
+        description
+          "Time elapsed since link established";
+      }
+      uses lw_db_perf;
+      leaf all-ip-addresses {
+        type string;
+      }
+    }
+    container last-rx-packet {
+      leaf last-rssi {
+        type int8;
+        units "dBm";
+        description
+          "Received signal strength index";
+      }
+      leaf last-snr {
+        type uint8;
+        description
+          "Error vector magnitude";
+      }
+      leaf last-modulation {
+        type mds_nx_common:lw-modulation;
+        description
+          "The last detected modulation the NIC uses";
+      }
+      description
+        "The last packet recieved over the air. If a
+         packet has not been recieved, the stats will
+         be set to invalid values.";
+    }
+    list connected-remotes {
+      key "address";
+      description
+        "The list of connected remotes";
+      uses nx_db_common;
+      leaf link-status {
+        type link-status-type;
+        description
+          "The status of the connection to a remote device";
+      }
+      uses lw_db_perf;
+      uses nx_db_stats;
+      leaf nic-id {
+        type uint16;
+        description
+          "The RF connection identifier for the connected remote device";
+      }
+      leaf all-ip-addresses {
+        type string;
+      }
+    }
+    list endpoints {
+      key "address";
+      description
+        "The list of endpoints";
+      uses nx_db_common;
+      leaf remote-address {
+        type yang:mac-address;
+        description
+          "The MAC address of the remote device servicing this endpoint";
+      }
+      uses nx_db_stats;
+    }
+    container hardware-info {
+      leaf serial-number {
+        type uint32;
+        description
+          "Serial Number";
+      }
+      leaf hardware-id {
+        type uint8;
+        description
+          "The Hardware ID";
+      }
+      leaf hardware-revision {
+        type uint8;
+        description
+          "The Hardware Revision";
+      }
+    }
+  }
+}

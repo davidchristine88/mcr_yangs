@@ -1,0 +1,121 @@
+module TRANSPORT-ADDRESS-MIB {
+  namespace "http://tail-f.com/ns/mibs/TRANSPORT-ADDRESS-MIB/200211010000Z";
+  prefix TRANSPORT_ADDRESS_MIB;
+
+  import ietf-yang-types {
+    prefix yang;
+  }
+
+  revision 2002-11-01 {
+    description
+      "";
+  }
+
+  typedef TransportDomain {
+    type yang:object-identifier;
+  }
+
+  typedef TransportAddressType {
+    type enumeration {
+      enum "unknown" {
+        value 0;
+      }
+      enum "udpIpv4" {
+        value 1;
+      }
+      enum "udpIpv6" {
+        value 2;
+      }
+      enum "udpIpv4z" {
+        value 3;
+      }
+      enum "udpIpv6z" {
+        value 4;
+      }
+      enum "tcpIpv4" {
+        value 5;
+      }
+      enum "tcpIpv6" {
+        value 6;
+      }
+      enum "tcpIpv4z" {
+        value 7;
+      }
+      enum "tcpIpv6z" {
+        value 8;
+      }
+      enum "sctpIpv4" {
+        value 9;
+      }
+      enum "sctpIpv6" {
+        value 10;
+      }
+      enum "sctpIpv4z" {
+        value 11;
+      }
+      enum "sctpIpv6z" {
+        value 12;
+      }
+      enum "local" {
+        value 13;
+      }
+      enum "udpDns" {
+        value 14;
+      }
+      enum "tcpDns" {
+        value 15;
+      }
+      enum "sctpDns" {
+        value 16;
+      }
+    }
+  }
+
+  typedef TransportAddress {
+    type hex-list;
+  }
+
+  typedef TransportAddressIPv4 {
+    type hex-list;
+  }
+
+  typedef TransportAddressIPv6 {
+    type hex-list;
+  }
+
+  typedef TransportAddressIPv4z {
+    type hex-list;
+  }
+
+  typedef TransportAddressIPv6z {
+    type hex-list;
+  }
+
+  typedef TransportAddressLocal {
+    type string {
+      length "1 .. 255";
+    }
+  }
+
+  typedef TransportAddressDns {
+    type string {
+      length "1 .. 255";
+    }
+  }
+
+  typedef hex-list {
+    type string {
+      pattern "(([0-9a-fA-F]){2}(:([0-9a-fA-F]){2})*)?";
+    }
+    status deprecated;
+    description
+      "DEPRECATED: Use yang:hex-string instead.  There are no plans to remove
+       tailf:hex-list.
+       
+       A list of colon-separated hexa-decimal octets e.g. '4F:4C:41:71'.
+       
+       The statement tailf:value-length can be used to restrict the number
+       of octets.  Note that using the 'length' restriction limits the
+       number of characters in the lexical representation.";
+  }
+}

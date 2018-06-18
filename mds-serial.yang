@@ -1,0 +1,843 @@
+module mds-serial {
+  namespace "com:gemds:mds-serial";
+  prefix serial;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+  import mds-services {
+    prefix serv;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring terminal server service.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-10-27 {
+    description
+      "Added status to passthrough, and changed the default terminal server transaction timeout.";
+  }
+  revision 2016-06-06 {
+    description
+      "Added parameter to disable banner";
+  }
+  revision 2016-03-11 {
+    description
+      "Updated default value for vtime.";
+  }
+  revision 2016-02-05 {
+    description
+      "- Created serial-status list to show the current state of the serial
+       ports which are detected in the system. Moved port capabilities to
+       this list as well.
+       - Added serial passthrough configuration.";
+  }
+  revision 2014-09-26 {
+    description
+      "Changed the interpretation of vmin and vtime.";
+  }
+  revision 2014-09-11 {
+    description
+      "Added additional baud rates.";
+  }
+  revision 2014-07-07 {
+    description
+      "Added UDP multicast support.";
+  }
+  revision 2014-07-01 {
+    description
+      "Added DCE/CTS serial device modes.";
+  }
+  revision 2014-06-18 {
+    description
+      "Added modem-control to capability.";
+  }
+  revision 2014-05-20 {
+    description
+      "Added validation to line mode.";
+  }
+  revision 2013-05-13 {
+    description
+      "Fixed description typo.";
+  }
+  revision 2013-05-13 {
+    description
+      "Added nacm restrictions. Updated RS-485.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-11-14 {
+    description
+      "Initial revision.";
+  }
+
+  typedef ip-multicast-group-address {
+    description
+      "The ip-multicast-group-address type represents an IP multicast address and
+       is IP version neutral. The format of the textual representations implies
+       the IP version.";
+    type union {
+      type ipv4-multicast-group-address;
+      type ipv6-multicast-group-address;
+    }
+  }
+
+  typedef ipv4-multicast-group-address {
+    description
+      "The ipv4-multicast-group-address type represents an IPv4 multicast
+       address in dotted-quad notation.";
+    reference "RFC4607";
+    type string {
+      pattern "(2((2[4-9])|(3[0-9]))\\.)(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\\.){2}([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])";
+    }
+  }
+
+  typedef ipv6-multicast-group-address {
+    description
+      "The ipv6-multicast-group-address type represents an IPv6 address in full,
+       mixed, shortened, and shortened-mixed notation.";
+    reference "RFC4291 2.7.ietf-inet-types:ipv6-address";
+    type string {
+      pattern "(((FF|ff)[0-9a-fA-F]{2}):)([0-9a-fA-F]{0,4}:){0,5}((([0-9a-fA-F]{0,4}:)?(:|[0-9a-fA-F]{0,4}))|(((25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])))";
+      pattern "(([^:]+:){6}(([^:]+:[^:]+)|(.*\\..*)))|((([^:]+:)*[^:]+)?::(([^:]+:)*[^:]+)?)";
+    }
+  }
+
+  grouping remote {
+    leaf address {
+      type inet:ip-address;
+      description
+        "The IPv4/IPv6 address used when sending serial data.";
+    }
+    leaf port {
+      type inet:port-number;
+      description
+        "The UDP port number used when sending serial data to the remote address.";
+      default "30011";
+    }
+  }
+
+  grouping remote-modbus {
+    leaf address {
+      type inet:ip-address;
+      description
+        "The IPv4/IPv6 address used when sending serial data.";
+    }
+    leaf port {
+      type inet:port-number;
+      description
+        "The port number used when sending serial data to the remote address.";
+      default "502";
+    }
+  }
+
+  grouping local-ips {
+    leaf-list ipv4-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv4/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv4 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv4 addresses.";
+    }
+    leaf-list ipv6-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv6/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv6 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv6 addresses.";
+    }
+  }
+
+  augment "/serv:services" {
+    container serial {
+      list ports {
+        nacm:default-deny-all;
+        key "name";
+        leaf name {
+          type string;
+          description
+            "The name of the serial port.";
+        }
+        leaf line-mode {
+          type enumeration {
+            enum "rs232";
+            enum "rs485-2-wire";
+            enum "rs485-4-wire";
+            enum "virtual";
+          }
+          description
+            "The line mode of the serial port";
+          default "rs232";
+        }
+        leaf baud-rate {
+          type enumeration {
+            enum "b300" {
+              value 300;
+              description
+                "300 bps";
+            }
+            enum "b1200" {
+              value 1200;
+              description
+                "1200 bps";
+            }
+            enum "b2400" {
+              value 2400;
+              description
+                "2400 bps";
+            }
+            enum "b4800" {
+              value 4800;
+              description
+                "4800 bps";
+            }
+            enum "b9600" {
+              value 9600;
+              description
+                "9600 bps";
+            }
+            enum "b19200" {
+              value 19200;
+              description
+                "19200 bps";
+            }
+            enum "b38400" {
+              value 38400;
+              description
+                "38400 bps";
+            }
+            enum "b57600" {
+              value 57600;
+              description
+                "57600 bps";
+            }
+            enum "b115200" {
+              value 115200;
+              description
+                "115200 bps";
+            }
+            enum "b230400" {
+              value 230400;
+              description
+                "230400 bps";
+            }
+          }
+          description
+            "The serial port baud rate";
+          default "b115200";
+        }
+        leaf byte-format {
+          type enumeration {
+            enum "bf7n1" {
+              description
+                "7 data-bits, no parity, 1 stop-bit";
+            }
+            enum "bf7e1" {
+              description
+                "7 data-bits, even parity, 1 stop-bit";
+            }
+            enum "bf7o1" {
+              description
+                "7 data-bits, odd parity, 1 stop-bit";
+            }
+            enum "bf7n2" {
+              description
+                "7 data-bits, no parity, 2 stop-bits";
+            }
+            enum "bf7e2" {
+              description
+                "7 data-bits, even parity, 2 stop-bits";
+            }
+            enum "bf7o2" {
+              description
+                "7 data-bits, odd parity, 2 stop-bits";
+            }
+            enum "bf8n1" {
+              description
+                "8 data-bits, no parity, 1 stop-bit";
+            }
+            enum "bf8e1" {
+              description
+                "8 data-bits, even parity, 1 stop-bit";
+            }
+            enum "bf8o1" {
+              description
+                "8 data-bits, odd parity, 1 stop-bit";
+            }
+            enum "bf8n2" {
+              description
+                "8 data-bits, no parity, 2 stop-bits";
+            }
+            enum "bf8e2" {
+              description
+                "8 data-bits, even parity, 2 stop-bits";
+            }
+            enum "bf8o2" {
+              description
+                "8 data-bits, odd parity, 2 stop-bits";
+            }
+          }
+          description
+            "The data byte format";
+          default "bf8n1";
+        }
+        leaf hw-flow-control {
+          when "../line-mode = \"rs232\"";
+          type boolean;
+          description
+            "Hardware flow control enable/disable";
+          default "false";
+        }
+        leaf hw-device-mode {
+          type enumeration {
+            enum "DCE";
+            enum "CTSKEY";
+            enum "CTSKEYPLUS";
+          }
+          description
+            "Device mode for hardware flow control";
+          default "DCE";
+        }
+        leaf cts-delay {
+          type uint16;
+          description
+            "DCE: Time to delay CTS after RTS.  CTSKEY: Time to delay data after CTS. (milliseconds)";
+          default "0";
+        }
+        leaf cts-hold {
+          type uint16;
+          description
+            "Time to hold CTS up after data is transmitted (milliseconds)";
+          default "0";
+        }
+        leaf vmin {
+          type uint16 {
+            range "0..16384";
+          }
+          description
+            "The minimum number of characters read on the serial port
+             before the data is processed";
+          default "255";
+        }
+        leaf vtime {
+          type uint16;
+          description
+            "The minimum time (in milliseconds) between reads
+             of data on the serial port";
+          default "10";
+          units "milliseconds";
+        }
+        leaf ffstormcount {
+          type uint32;
+          description
+            "Number of FF's to receive before declaring a storm
+             and resetting UART";
+          default "1000";
+        }
+      }
+      list ports-status {
+        config false;
+        leaf name {
+          type string;
+          description
+            "The name of the serial port.";
+        }
+        container capabilities {
+          leaf rs485-2-wire {
+            type boolean;
+            description
+              "If true, this device supports half-duplex RS-485 operation";
+          }
+          leaf rs485-4-wire {
+            type boolean;
+            description
+              "If true, this device supports full-duplex RS-485 operation";
+          }
+          leaf modem-control {
+            type boolean;
+            description
+              "If true, this device supports modem-control handshaking lines";
+          }
+        }
+      }
+      container console {
+        leaf-list serial-ports {
+          type leafref {
+            path "../../ports/name";
+          }
+          description
+            "The serial ports on which to run a login-console.
+             If this list is empty, there will be no serial consoles enabled.
+             Make sure this is what you want!";
+        }
+      }
+      container terminal-server {
+        list server {
+          key "serial-port";
+          must "boolean(mode/tcp-server) or boolean(mode/tcp-client) or boolean(mode/udp) or boolean(mode/modbus-tcp)" {
+            error-message "The terminal server mode must be specified.";
+          }
+          leaf serial-port {
+            mandatory true;
+            type leafref {
+              path "../../../ports/name";
+            }
+            description
+              "The serial port to operate this terminal-server instance on";
+          }
+          leaf description {
+            type string;
+            description
+              "A optional description for this terminal-server instance";
+          }
+          leaf enabled {
+            type boolean;
+            default "true";
+            description
+              "Whether or not to run the terminal server service";
+          }
+          leaf display-banner {
+            type boolean;
+            default "true";
+            description
+              "When set to true, banner will be printed to port when
+               entering terminal server";
+          }
+          container mode {
+            choice tcp-or-udp {
+              case tcp {
+                container tcp-server {
+                  presence "TCP server";
+                  leaf server-mode {
+                    type enumeration {
+                      enum "streaming-tcp";
+                      enum "polled-tcp";
+                    }
+                    default "streaming-tcp";
+                    description
+                      "The TCP server mode to use, based on your network connections.
+                       The modes represent the following connections:
+                       streaming - tcp data is streamed as it arrives
+                       queued - used in a polled network where serial data is queued on a per-transaction basis, with one transaction serviced at a time
+                      ";
+                  }
+                  container local-ips {
+                    uses local-ips;
+                    description
+                      "Restrict the server to only operate on configured IP interfaces";
+                  }
+                  leaf port {
+                    type inet:port-number;
+                    description
+                      "The local port of the server";
+                    default "30011";
+                  }
+                  leaf idle-timeout {
+                    type uint32;
+                    description
+                      "The time interval (in secs) after which a tcp connection is 
+                       disconnected if there is no data activity to/from the client";
+                    default "30";
+                    units "seconds";
+                  }
+                  leaf transaction-timeout {
+                    type uint16;
+                    when "(../server-mode = 'polled-tcp')";
+                    default "3500";
+                    description
+                      "The time interval (in ms) after which a serial transaction is aborted
+                       if there is no data activity to or from the serial port.
+                       Range: 500-65535";
+                    units "milliseconds";
+                  }
+                  leaf drop-unsolicited-serial-traffic {
+                    type boolean;
+                    when "(../server-mode = 'polled-tcp')";
+                    default "true";
+                    description
+                      "If enabled, the server will drop unexpected serial traffic. Recommended
+                       only for polled systems.";
+                  }
+                  leaf connection-policy {
+                    type enumeration {
+                      enum "drop-existing";
+                      enum "drop-new";
+                    }
+                    when "(../server-mode = 'streaming-tcp')";
+                    description
+                      "When a TCP connection is attempted, while there is already an ongoing
+                       connection, this controls which connection is allowed.";
+                  }
+                }
+                container tcp-client {
+                  presence "TCP client";
+                  container remote {
+                    uses remote {
+                      refine "address" {
+                        mandatory true;
+                      }
+                    }
+                  }
+                  leaf idle-timeout {
+                    type uint32;
+                    description
+                      "The time interval (in secs) after which a tcp connection is 
+                       disconnected if there is no data activity to/from the remote";
+                    default "30";
+                    units "seconds";
+                  }
+                  description
+                    "TCP terminal server configuration.";
+                }
+              }
+              case modbus-tcp {
+                leaf modbus-tcp-mode {
+                  type enumeration {
+                    enum "server" {
+                      description
+                        "Server Socket";
+                    }
+                    enum "server-client" {
+                      description
+                        "Server/Client Socket";
+                    }
+                    enum "client" {
+                      description
+                        "Client Socket";
+                    }
+                  }
+                  default "server";
+                  description
+                    "The mode in which this instance of the MODBUS TCP service should operate.";
+                }
+                container modbus-tcp {
+                  presence "MODBUS TCP settings";
+                  leaf mode {
+                    mandatory true;
+                    type enumeration {
+                      enum "RTU";
+                      enum "ASCII";
+                    }
+                  }
+                  container local-ips {
+                    presence "local-ips";
+                    uses local-ips;
+                    when
+                      "(../../modbus-tcp-mode = 'server') or
+                       (../../modbus-tcp-mode = 'server-client')";
+                    description
+                      "Restrict the server to only operate on configured IP interfaces";
+                  }
+                  leaf port {
+                    type inet:port-number;
+                    when
+                      "(../../modbus-tcp-mode = 'server') or
+                       (../../modbus-tcp-mode = 'server-client')";
+                    description
+                      "The local port of this server";
+                    default "502";
+                  }
+                  container remote-ips {
+                    uses remote-modbus;
+                    when
+                      "(../../modbus-tcp-mode = 'client') or
+                       (../../modbus-tcp-mode = 'server-client')";
+                    must "(../../modbus-tcp-mode = 'server') or (address != '')" {
+                      error-message "Remote IP address is not specified";
+                    }
+                    description
+                      "The remote server address and port";
+                  }
+                  leaf idle-timeout {
+                    type uint32;
+                    description
+                      "The time interval (in secs) after which a tcp connection is 
+                       disconnected if there is no data activity to/from the client";
+                    default "30";
+                    units "seconds";
+                  }
+                  leaf transaction-timeout {
+                    type uint16;
+                    default "3500";
+                    description
+                      "The time interval (in ms) after which a serial transaction is aborted
+                       if there is no data activity to or from the serial port.
+                       Range: 500-65535";
+                    units "milliseconds";
+                  }
+                  description
+                    "MODBUS/TCP to MODBUS/RTU MODBUS/ASCII terminal server configuration.";
+                }
+              }
+              case udp {
+                container udp {
+                  leaf mode {
+                    type enumeration {
+                      enum "point-to-point";
+                      enum "point-to-multipoint";
+                      enum "multipoint-to-point";
+                      enum "multipoint-to-multipoint";
+                      enum "polled-udp";
+                    }
+                    default "point-to-point";
+                    description
+                      "The UDP mode to use, based on your network connections.
+                       The modes represent the following connections:
+                       point-to-point - from a single device to another single device
+                       point-to-multipoint - from a single device to a group of devices
+                       multipoint-to-point - from a device in the group to a single device
+                       multipoint-to-multipoint - from a device in the group to a group of devices
+                       queued - a form of point-to-point where serial data is queued on a per-transaction basis, with one transaction serviced at a time
+                      ";
+                  }
+                  presence "UDP";
+                  container local-ips {
+                    uses local-ips;
+                    description
+                      "Restrict the server to only operate on configured IP interfaces";
+                  }
+                  leaf port {
+                    when "../mode = 'point-to-point' or ../mode = 'point-to-multipoint' or ../mode = 'polled-udp'";
+                    type inet:port-number;
+                    description
+                      "The local port of the server";
+                    default "30011";
+                  }
+                  leaf transaction-timeout {
+                    when "../mode = 'polled-udp'";
+                    type uint16;
+                    default "3500";
+                    description
+                      "The time interval (in ms) after which a serial transaction is aborted
+                       if there is no data activity to or from the serial port.
+                       Range: 500-65535";
+                    units "milliseconds";
+                  }
+                  container remote {
+                    when "../mode = 'point-to-point' or ../mode = 'multipoint-to-point'";
+                    uses remote {
+                      refine "address" {
+                        mandatory true;
+                      }
+                    }
+                    description
+                      "The configuration for sending to a remote device.";
+                  }
+                  container multicast {
+                    presence "multicast";
+                    when "../mode != 'point-to-point' and ../mode != 'polled-udp'";
+                    leaf address {
+                      mandatory true;
+                      type ip-multicast-group-address;
+                      description
+                        "The multicast IPv4/IPv6 address in the form of 224.0.0.1 or FF01:::::::1.";
+                    }
+                    leaf port {
+                      type inet:port-number;
+                      description
+                        "The UDP port number to use.";
+                      default "30011";
+                    }
+                    leaf ttl {
+                      type uint8;
+                      description
+                        "The multicast TTL threshold used to restrict delivery of multicast frame
+                         as they pass through routers to a specified number of hops.
+                         Setting TTL to a value of 0 restricts the frame to the same host.
+                         Setting TTL to a value of 1 restricts the frame to the same subnet.
+                         Setting TTL to a value of 32 restricts the frame to the same site.
+                         Setting TTL to a value of 64 restricts the frame to the same region.
+                         Setting TTL to a value of 128 restricts the frame to the same continent.
+                         Setting TTL to a value of 255 unrestricts the frame.";
+                      default "1";
+                    }
+                    leaf bind-interface {
+                      type if:interface-ref;
+                      description
+                        "The interface that the multicast traffic will be sent out on.";
+                    }
+                    description
+                      "The multicast group configuration.";
+                  }
+                  description
+                    "UDP terminal server configuration.";
+                }
+              }
+            }
+            leaf dscp {
+              type uint8 {
+                range "0..63";
+              }
+              default "40";
+              description
+                "The DSCP value to set in the outgoing IP packets.";
+            }
+            description
+              "The terminal server operating mode.";
+          }
+          container status {
+            config false;
+            leaf ip-tx-packets {
+              type uint32;
+              description
+                "The number of IP packets trasmitted.";
+            }
+            leaf ip-tx-bytes {
+              type uint32;
+              description
+                "The number of IP bytes trasmitted.";
+            }
+            leaf ip-rx-packets {
+              type uint32;
+              description
+                "The number of IP packets received.";
+            }
+            leaf ip-rx-bytes {
+              type uint32;
+              description
+                "The number of IP bytes received.";
+            }
+            leaf serial-tx-packets {
+              type uint32;
+              description
+                "The number of serial packets transmitted.";
+            }
+            leaf serial-tx-bytes {
+              type uint32;
+              description
+                "The number of serial bytes transmitted.";
+            }
+            leaf serial-rx-packets {
+              type uint32;
+              description
+                "The number of serial packets received.";
+            }
+            leaf serial-rx-bytes {
+              type uint32;
+              description
+                "The number of serial bytes received.";
+            }
+          }
+        }
+      }
+      container passthrough {
+        description
+          "Serial passthrough allows 2 serial ports to be virtually
+           connected together.";
+        list instance {
+          key "name";
+          leaf name {
+            type string;
+            description
+              "The name assigned to this passthrough instance";
+          }
+          leaf port-1 {
+            mandatory true;
+            type leafref {
+              path "../../../ports/name";
+            }
+            must "not( ( .= (/serv:services/serial:serial/passthrough/instance[name != current()/../name]/port-1)) or ( .= (/serv:services/serial:serial/passthrough/instance[name != current()/../name]/port-2)))" {
+              error-message "Serial ports can only be assigned to one passthrough instance.";
+            }
+            must "not( . = ../port-2)" {
+              error-message "The same serial port cannot be used for both ends of a passthrough instance.";
+            }
+            description
+              "The first of two ports that will be connected together";
+          }
+          leaf port-2 {
+            mandatory true;
+            type leafref {
+              path "../../../ports/name";
+            }
+            must "not( ( .= (/serv:services/serial:serial/passthrough/instance[name != current()/../name]/port-1)) or ( .= (/serv:services/serial:serial/passthrough/instance[name != current()/../name]/port-2)))" {
+              error-message "Serial ports can only be assigned to one passthrough instance.";
+            }
+            must "not( . = ../port-1)" {
+              error-message "The same serial port cannot be used for both ends of a passthrough instance.";
+            }
+            description
+              "The second of two ports that will be connected together";
+          }
+          leaf display-banner {
+            type boolean;
+            default "true";
+            description
+              "When set to true, banner will be printed to port when
+               entering terminal server";
+          }
+          container status {
+            config false;
+            leaf port1-tx-packets {
+              type uint32;
+              description
+                "The number of serial packets trasmitted.";
+            }
+            leaf port1-tx-bytes {
+              type uint32;
+              description
+                "The number of serial bytes trasmitted.";
+            }
+            leaf port1-rx-packets {
+              type uint32;
+              description
+                "The number of serial packets received.";
+            }
+            leaf port1-rx-bytes {
+              type uint32;
+              description
+                "The number of serial bytes received.";
+            }
+            leaf port2-tx-packets {
+              type uint32;
+              description
+                "The number of serial packets transmitted.";
+            }
+            leaf port2-tx-bytes {
+              type uint32;
+              description
+                "The number of serial bytes transmitted.";
+            }
+            leaf port2-rx-packets {
+              type uint32;
+              description
+                "The number of serial packets received.";
+            }
+            leaf port2-rx-bytes {
+              type uint32;
+              description
+                "The number of serial bytes received.";
+            }
+          }
+        }
+      }
+    }
+  }
+}

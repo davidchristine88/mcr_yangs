@@ -1,0 +1,73 @@
+module mds-certmgr-servers {
+  namespace "com:gemds:mds-certmgr-servers";
+  prefix certmgr-servers;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import mds-certmgr {
+    prefix cm;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module augments server tree based on type of
+     each server identified in the certificate-server list.
+          
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2013-05-13 {
+    description
+      "Refactoring of SCEP support.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-12-28 {
+    description
+      "Year end stable.";
+  }
+
+  grouping scep-settings {
+    leaf uri {
+      type inet:uri;
+    }
+    leaf retry-count {
+      type uint16;
+      default "120";
+    }
+    leaf poll-interval {
+      type uint16;
+      default "5";
+    }
+    leaf digest-algo {
+      type cm:certmgr-digest-algo;
+      default "md5";
+      description
+        "Digest Algorithm: default=md5";
+    }
+    leaf encrypt-algo {
+      type cm:certmgr-enc-algo;
+      default "des_cbc";
+      description
+        "Encryption Algorithm: default=des_cbc";
+    }
+  }
+
+  augment "/cm:pki/cm:certificate-servers/cm:certificate-server" {
+    when "cm:server-type = 'scep'";
+    container server-setting {
+      uses scep-settings;
+    }
+  }
+}

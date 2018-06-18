@@ -1,0 +1,35 @@
+module mds-if-loopback {
+  namespace "com:gemds:mds-if-loopback";
+  prefix mds_loopback;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     looback interfaces as found on MDS products.
+     
+     Copyright (c) 2014 by GE MDS LLC. All rights reserved.";
+
+  revision 2014-08-07 {
+    description
+      "Initial revision.";
+  }
+
+  identity loopback {
+    base if:interface-type;
+    description
+      "loopback Interface";
+  }
+}

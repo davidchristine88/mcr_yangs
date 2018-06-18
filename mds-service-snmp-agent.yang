@@ -1,0 +1,159 @@
+submodule mds-service-snmp-agent {
+  belongs-to mds-service-snmp {
+    prefix snmp;
+  }
+
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+  include mds-service-snmp-common;
+
+  grouping bind-ips {
+    leaf-list ipv4-bind-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv4/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv4 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv4 addresses.";
+    }
+    leaf-list ipv6-bind-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv6/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv6 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv6 addresses.";
+    }
+  }
+
+  augment "/serv:services/snmp:snmp" {
+    container agent {
+      description
+        "Configuration of the SNMP agent";
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Enables the SNMP agent.";
+      }
+      uses bind-ips;
+      leaf port {
+        type inet:port-number;
+        default "161";
+        description
+          "UDP protocol port to be used for communication";
+      }
+      container version {
+        description
+          "SNMP version used by the agent";
+        leaf v1 {
+          type empty;
+        }
+        leaf v2c {
+          type empty;
+        }
+        leaf v3 {
+          type empty;
+          must "../../engine-id" {
+            error-message "when v3 is configured, an engine-id must be set";
+          }
+        }
+      }
+      container engine-id {
+        presence "sets the local engine-id";
+        reference "SNMP-FRAMEWORK-MIB.snmpEngineID";
+        description
+          "Local SNMP engine's administratively-unique identifier";
+        leaf enterprise-number {
+          type uint32;
+          mandatory true;
+        }
+        choice method {
+          mandatory true;
+          case from-ip {
+            leaf from-ip {
+              type leafref {
+                path "/if:interfaces/if:interface/ip:ipv4/ip:address/ip:ip";
+              }
+              description
+                "Generate the SNMP engine ID based on the specified IP address";
+            }
+          }
+          case from-mac {
+            leaf from-mac {
+              type empty;
+              description
+                "Generate the SNMP engine ID based on the ethernet MAC address";
+            }
+          }
+          case from-text {
+            leaf from-text {
+              type string {
+                length "1..27";
+              }
+              description
+                "Generate the SNMP engine ID based specified text string";
+            }
+          }
+          case other {
+            leaf other {
+              type string {
+                pattern "[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){0,27}";
+              }
+              description
+                "Generate the SNMP engine ID based specified hex string";
+            }
+          }
+        }
+      }
+      leaf max-message-size {
+        type int32 {
+          range "484..214748364";
+        }
+        description
+          "The maximum length of SNMP message agent can send or receive";
+        reference "SNMP-FRAMEWORK-MIB.snmpEngineMaxMessageSize";
+      }
+      leaf debug-enabled {
+        type boolean;
+        default "false";
+        description
+          "Enabling SNMP debug will cause all SNMP requests to be logged to the
+           snmp.log file. This should only be enabled when diagnosing issues as
+           this log file can fill quickly and reduce the overall performance of
+           the system.";
+      }
+    }
+    container system {
+      description
+        "System group configuration";
+      leaf contact {
+        type admin-string;
+        default "";
+        reference "SNMPv2-MIB.sysContact";
+      }
+      leaf name {
+        type admin-string;
+        default "";
+        reference "SNMPv2-MIB.sysName";
+      }
+      leaf location {
+        type admin-string;
+        default "";
+        reference "SNMPv2-MIB.sysLocation";
+      }
+    }
+  }
+}

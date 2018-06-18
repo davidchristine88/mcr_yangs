@@ -1,0 +1,225 @@
+module IF-MIB {
+  namespace "com:gemds:IF-MIB";
+  prefix IF-MIB;
+
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import IANAifType-MIB {
+    prefix IANAifType-MIB;
+  }
+  import SNMPv2-TC {
+    prefix smiv2;
+  }
+
+  revision 2014-04-17 {
+    description
+      "Add ifXtable MIB support";
+  }
+
+  typedef OwnerString {
+    type string {
+      length "min .. 255";
+    }
+  }
+
+  typedef DisplayString {
+    type string {
+      length "min .. 255";
+    }
+  }
+
+  typedef InterfaceIndex {
+    type int32 {
+      range "1 .. 2147483647";
+    }
+  }
+
+  typedef InterfaceIndexOrZero {
+    type int32 {
+      range "0 .. 2147483647";
+    }
+  }
+
+  typedef ifAdminStatusType {
+    type enumeration {
+      enum "up" {
+        value 1;
+      }
+      enum "down" {
+        value 2;
+      }
+      enum "testing" {
+        value 3;
+      }
+    }
+  }
+
+  typedef ifOperStatusType {
+    type enumeration {
+      enum "up" {
+        value 1;
+      }
+      enum "down" {
+        value 2;
+      }
+      enum "testing" {
+        value 3;
+      }
+      enum "unknown" {
+        value 4;
+      }
+      enum "dormant" {
+        value 5;
+      }
+      enum "notPresent" {
+        value 6;
+      }
+      enum "lowerLayerDown" {
+        value 7;
+      }
+    }
+  }
+
+  container IF-MIB {
+    config false;
+    container interfaces {
+      leaf ifNumber {
+        type int32;
+      }
+    }
+    container ifMIBObjects {
+      leaf ifTableLastChange {
+        type yang:timeticks;
+      }
+    }
+    container ifTable {
+      list ifEntry {
+        key "ifIndex";
+        leaf ifIndex {
+          type InterfaceIndex;
+        }
+        leaf ifDescr {
+          type DisplayString;
+        }
+        leaf ifType {
+          type IANAifType-MIB:IANAifType;
+        }
+        leaf ifMtu {
+          type int32;
+        }
+        leaf ifSpeed {
+          type yang:gauge32;
+        }
+        leaf ifPhysAddress {
+          type yang:phys-address;
+        }
+        leaf ifAdminStatus {
+          type ifAdminStatusType;
+        }
+        leaf ifOperStatus {
+          type ifOperStatusType;
+        }
+        leaf ifLastChange {
+          type yang:timeticks;
+        }
+        leaf ifInOctets {
+          type yang:counter32;
+        }
+        leaf ifInUcastPkts {
+          type yang:counter32;
+        }
+        leaf ifInDiscards {
+          type yang:counter32;
+        }
+        leaf ifInErrors {
+          type yang:counter32;
+        }
+        leaf ifInUnknownProtos {
+          type yang:counter32;
+        }
+        leaf ifOutOctets {
+          type yang:counter32;
+        }
+        leaf ifOutUcastPkts {
+          type yang:counter32;
+        }
+        leaf ifOutDiscards {
+          type yang:counter32;
+        }
+        leaf ifOutErrors {
+          type yang:counter32;
+        }
+      }
+      list ifXEntry {
+        key "ifIndex";
+        leaf ifIndex {
+          type InterfaceIndex;
+        }
+        leaf ifName {
+          type DisplayString;
+        }
+        leaf ifInMulticastPkts {
+          type yang:counter32;
+        }
+        leaf ifInBroadcastPkts {
+          type yang:counter32;
+        }
+        leaf ifOutMulticastPkts {
+          type yang:counter32;
+        }
+        leaf ifOutBroadcastPkts {
+          type yang:counter32;
+        }
+        leaf ifHCInOctets {
+          type yang:counter64;
+        }
+        leaf ifHCInUcastPkts {
+          type yang:counter64;
+        }
+        leaf ifHCInMulticastPkts {
+          type yang:counter64;
+        }
+        leaf ifHCInBroadcastPkts {
+          type yang:counter64;
+        }
+        leaf ifHCOutOctets {
+          type yang:counter64;
+        }
+        leaf ifHCOutUcastPkts {
+          type yang:counter64;
+        }
+        leaf ifHCOutMulticastPkts {
+          type yang:counter64;
+        }
+        leaf ifHCOutBroadcastPkts {
+          type yang:counter64;
+        }
+        leaf ifLinkUpDownTrapEnable {
+          type enumeration {
+            enum "enabled" {
+              value 1;
+            }
+            enum "disabled" {
+              value 2;
+            }
+          }
+        }
+        leaf ifHighSpeed {
+          type yang:gauge32;
+        }
+        leaf ifPromiscuousMode {
+          type smiv2:TruthValue;
+        }
+        leaf ifConnectorPresent {
+          type smiv2:TruthValue;
+        }
+        leaf ifAlias {
+          type smiv2:DisplayString {
+            length "0..64";
+          }
+        }
+      }
+    }
+  }
+}

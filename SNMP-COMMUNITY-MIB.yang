@@ -1,0 +1,110 @@
+module SNMP-COMMUNITY-MIB {
+  namespace "http://tail-f.com/ns/mibs/SNMP-COMMUNITY-MIB/200308060000Z";
+  prefix SNMP_COMMUNITY_MIB;
+
+  import SNMPv2-TC {
+    prefix SNMPv2_TC;
+  }
+  import SNMP-TARGET-MIB {
+    prefix SNMP_TARGET_MIB;
+  }
+  import SNMP-FRAMEWORK-MIB {
+    prefix SNMP_FRAMEWORK_MIB;
+  }
+
+  revision 2003-08-06 {
+    description
+      "";
+  }
+
+  container SNMP-COMMUNITY-MIB {
+    container snmpCommunityTable {
+      list snmpCommunityEntry {
+        key "snmpCommunityIndex";
+        leaf snmpCommunityIndex {
+          type snmpCommunityIndexType;
+        }
+        leaf snmpCommunityName {
+          type snmpCommunityNameType;
+          mandatory true;
+        }
+        leaf snmpCommunitySecurityName {
+          type snmpCommunitySecurityNameType;
+          mandatory true;
+        }
+        leaf snmpCommunityContextEngineID {
+          type SNMP_FRAMEWORK_MIB:SnmpEngineID;
+          mandatory true;
+        }
+        leaf snmpCommunityContextName {
+          type snmpCommunityContextNameType;
+          default "";
+        }
+        leaf snmpCommunityTransportTag {
+          type SNMP_TARGET_MIB:SnmpTagValue;
+          default "";
+        }
+        leaf snmpCommunityStorageType {
+          type SNMPv2_TC:StorageType;
+          default "permanent";
+        }
+      }
+    }
+  }
+
+  typedef snmpCommunityIndexType {
+    type string {
+      length "1 .. 32";
+    }
+  }
+
+  typedef snmpCommunityNameType {
+    type string;
+  }
+
+  typedef snmpCommunitySecurityNameType {
+    type string {
+      length "1 .. 32";
+    }
+  }
+
+  typedef snmpCommunityContextNameType {
+    type string {
+      length "min .. 32";
+    }
+  }
+
+  typedef snmpTargetAddrNameType {
+    type string {
+      length "1 .. 32";
+    }
+  }
+
+  typedef snmpTargetAddrTMaskType {
+    type hex-list {
+      pattern "(((([0-9A-Fa-f]{2}):){0,254}([0-9A-Fa-f]{2}))){0,1}";
+    }
+  }
+
+  typedef snmpTargetAddrMMSType {
+    type int32 {
+      range "0 .. 2147483647";
+    }
+  }
+
+  typedef hex-list {
+    type string {
+      pattern "(([0-9a-fA-F]){2}(:([0-9a-fA-F]){2})*)?";
+    }
+    status deprecated;
+    description
+      "DEPRECATED: Use yang:hex-string instead.  There are no plans to remove
+       tailf:hex-list.
+       
+       A list of colon-separated hexa-decimal octets e.g. '4F:4C:41:71'.
+       
+       The statement tailf:value-length can be used to restrict the number
+       of octets.  Note that using the 'length' restriction limits the
+       number of characters in the lexical representation.";
+  }
+}

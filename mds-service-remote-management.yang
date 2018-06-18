@@ -1,0 +1,377 @@
+module mds-service-remote-management {
+  namespace "com:gemds:mds-service-remote-management";
+  prefix remote-management;
+
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-system {
+    prefix sys;
+  }
+  import mds-common {
+    prefix mc;
+  }
+  import mds-system {
+    prefix mdssys;
+  }
+  import mds-certmgr {
+    prefix mdscert;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import mds-service-web {
+    prefix web;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module is a remote management configuration file for a service.
+     Copyright (c) 2015 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-10-27 {
+    description
+      "Changed the web proxy configureation and status.";
+  }
+  revision 2016-09-21 {
+    description
+      "Changed the reboot remote devices to just take a version string
+       instead of forcing the version to be one that is installed on the units.";
+  }
+  revision 2016-04-15 {
+    description
+      "Added configurable defaults.";
+  }
+  revision 2015-10-16 {
+    description
+      "Added peer database to display who is participating in the
+       firmware push. Improved some descriptions.";
+  }
+  revision 2015-09-24 {
+    description
+      "Added status of firmware push.";
+  }
+  revision 2015-08-21 {
+    description
+      "Changed to be enabled by default.";
+  }
+  revision 2015-08-14 {
+    description
+      "Updated descriptions.";
+  }
+  revision 2015-08-03 {
+    description
+      "Added txrate and block size parameters.";
+  }
+  revision 2015-06-03 {
+    description
+      "Added status information.";
+  }
+  revision 2015-01-22 {
+    description
+      "Initial revision.";
+  }
+
+  feature remote-web-proxy {
+    description
+      "Allows the device to run a web server on behalf of another device.
+       This allows web management even over a constrained link.";
+  }
+
+  typedef rm-mgmt-status {
+    type enumeration {
+      enum "waiting";
+      enum "connecting";
+      enum "negotiating";
+      enum "ready";
+      enum "connected";
+      enum "disconnected";
+      enum "error";
+    }
+  }
+
+  grouping send-common-arguments {
+    leaf interface {
+      description
+        "Interface to use when sending remote management messages.
+         If the desired interface is in a bridge, you must use that
+         bridge instead.";
+      mandatory true;
+      type if:interface-ref;
+    }
+    leaf txrate {
+      description
+        "Number of kilobytes per second to send data blocks. You can also enter
+         -1 to send as fast as the network interface will allow, or -2 to
+         transfer at the maximum rate that can be sustained by the slowest peer.";
+      type int32 {
+        range "-2..max";
+      }
+      default "-2";
+    }
+    leaf blocksize {
+      description
+        "Number of bytes per data block";
+      type uint16 {
+        range "512..1300";
+      }
+      default "512";
+    }
+  }
+
+  grouping send-firmware-arguments {
+    choice source {
+      case local-image {
+        container local-image {
+          description
+            "Send one of the currently installed flash images to remote
+             units.";
+          uses mdssys:which-image-input;
+        }
+      }
+      case external-file {
+        container external-file {
+          description
+            "Retrieve a file from an external file server and send it to
+             remote units.";
+          uses mc:external-file;
+        }
+      }
+    }
+    leaf reboot-remotes-on-completion {
+      type boolean;
+      default "false";
+      description
+        "Automatically reboot remote devices once they are finished
+         reprogramming.";
+    }
+  }
+
+  grouping send-firmware-certificate-arguments {
+    choice source {
+      case local-certificate {
+        container local-certificate {
+          description
+            "Send one of the currently installed firmware certificates to remote
+             units.";
+          leaf cert-id {
+            type string;
+            description
+              "firmware certificate identifier";
+          }
+        }
+      }
+      case external-file {
+        container external-file {
+          description
+            "Retrieve a file from an external file server and send it to
+             remote units.";
+          uses mc:external-file;
+        }
+        leaf cert-id {
+          type string;
+          description
+            "An ID to assign to this certficate once retrieved";
+        }
+      }
+    }
+  }
+
+  augment "/serv:services" {
+    container remote-management {
+      description
+        "Remote management service";
+      leaf enabled {
+        type boolean;
+        default "true";
+        description
+          "Whether or not to run the remote-management service";
+      }
+      leaf-list interfaces {
+        type if:interface-ref;
+        description
+          "One or more interfaces to listen for remote management traffic.
+           If the desired interface is in a bridge, you must use that
+           bridge instead.";
+      }
+      leaf shared-secret {
+        type aes-cfb-128-encrypted-string;
+        description
+          "Shared secret used to secure remote management communications";
+      }
+      container firmware {
+        leaf enabled {
+          type boolean;
+          default "true";
+          description
+            "Allow remote management of system firmware";
+        }
+        description
+          "Configuration for remote management of system firmware";
+      }
+      container web-proxy {
+        leaf enabled {
+          type boolean;
+          default "true";
+          description
+            "Allow this device to manage another through a remote web UI session.";
+        }
+        leaf auto-redirect {
+          when "../enabled = 'true'";
+          type boolean;
+          default "true";
+          description
+            "Enables the system to automaticly redirect web traffic destined for a proxied device.";
+        }
+        leaf min-web-port {
+          type uint16;
+          default "30020";
+        }
+        leaf max-web-port {
+          type uint16;
+          default "30080";
+        }
+        description
+          "Configuration for remote management of the remote web proxy client";
+      }
+      container send;
+      container firmware-defaults {
+        leaf session-timeout {
+          type uint16;
+          units "minutes";
+          default "45";
+        }
+        leaf contention-window {
+          type uint16;
+          units "seconds";
+          default "5";
+        }
+        leaf max-retries {
+          type uint16;
+          default "3";
+        }
+        leaf broadcast-interval {
+          type uint16;
+          units "seconds";
+          default "3";
+        }
+        leaf broadcast-repeat {
+          type uint16;
+          default "5";
+        }
+        leaf blocks-per-pass {
+          type uint16;
+          default "20";
+        }
+        leaf loop-idle-time {
+          type uint16;
+          units "seconds";
+          default "15";
+        }
+        leaf transport-verbosity {
+          type uint32 {
+            range "1..5";
+          }
+        }
+        leaf transport-min-grrt {
+          type string;
+        }
+        leaf transport-init-grrt {
+          type string;
+        }
+        leaf transport-robustness {
+          type uint32 {
+            range "10..50";
+          }
+        }
+      }
+    }
+    container remote-management-status {
+      config false;
+      container web-proxy-client {
+        list remotes {
+          key "ip-address";
+          leaf ip-address {
+            type inet:ip-address;
+            description
+              "Address of connected device.";
+          }
+          leaf status {
+            type rm-mgmt-status;
+            description
+              "Status of local web proxy.";
+          }
+          leaf version {
+            type string;
+          }
+          leaf interface {
+            type string;
+          }
+          leaf proxy-address {
+            type string;
+          }
+        }
+      }
+      container send-status {
+        description
+          "The current status of the remote current send operation.";
+        uses mc:file-transfer-status;
+      }
+      list peer-database {
+        key "ip-address";
+        leaf ip-address {
+          type inet:ip-address;
+          description
+            "IP address of peer receiving data";
+        }
+        leaf status {
+          type string;
+          description
+            "Status of the receiving on peer.";
+        }
+      }
+    }
+  }
+  rpc remote-management-send-firmware {
+    description
+      "Start remote management session to send a firmware image to
+       remote devices participating in remote management. This can be
+       either a currently installed firmware image, or an external
+       file.";
+    input {
+      uses send-common-arguments;
+      uses send-firmware-arguments;
+    }
+  }
+  rpc remote-management-send-firmware-certificate {
+    description
+      "Start remote management session to send a firmware certificate to
+       remote devices participating in remote management. This can be
+       either a currently installed firmware certificate, or an external
+       file.";
+    input {
+      uses send-common-arguments;
+      uses send-firmware-certificate-arguments;
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

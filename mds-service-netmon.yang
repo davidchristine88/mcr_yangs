@@ -1,0 +1,270 @@
+module mds-service-netmon {
+  namespace "com:gemds:services:netmon";
+  prefix netmon;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import mds-services {
+    prefix serv;
+  }
+  import mds-security {
+    prefix sec;
+  }
+  import mds-interfaces {
+    prefix mdsif;
+  }
+  import mds-if-cell {
+    prefix mdscell;
+  }
+  import ietf-system {
+    prefix sys;
+  }
+  import mds-system {
+    prefix mdssys;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring network monitor service.
+     
+     Copyright (c) 2014 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-07-03 {
+    description
+      "Added support for bgp-neighbor-monitor.";
+  }
+  revision 2015-11-24 {
+    description
+      "Augmented netmon into interfaces VRRP.";
+  }
+  revision 2014-10-09 {
+    description
+      "Added allowed character set in description/help message.";
+  }
+  revision 2014-09-05 {
+    description
+      "Initial.";
+  }
+
+  augment "/serv:services" {
+    container netmon {
+      list operation {
+        key "name";
+        unique "interface-monitor/interface";
+        leaf name {
+          type sec:word-string;
+          description
+            "ASCII string identifying the operation (allowed chars: a-zA-Z0-9-_).";
+        }
+        leaf enabled {
+          type boolean;
+          default "false";
+          description
+            "Whether or not to run this operation";
+        }
+        must
+          "(type='interface-monitor' and interface-monitor) or
+           (type='icmp-echo-monitor' and icmp-echo-monitor) or
+           (type='bgp-neighbor-monitor' and bgp-neighbor-monitor)" {
+          error-message "Must configure parameters of the selected operation type";
+        }
+        leaf type {
+          type enumeration {
+            enum "interface-monitor" {
+              description
+                "Montitor interface link state";
+            }
+            enum "icmp-echo-monitor" {
+              description
+                "Montitor remote's reachability via ICMP ECHO";
+            }
+            enum "bgp-neighbor-monitor" {
+              description
+                "Monitor BGP neighbor state";
+            }
+          }
+          mandatory true;
+          description
+            "Type of monitor operation";
+        }
+        container interface-monitor {
+          presence "interface-monitor";
+          when "../type='interface-monitor'";
+          leaf interface {
+            type leafref {
+              path "/if:interfaces/if:interface/if:name";
+            }
+            mandatory true;
+            description
+              "Interface to monitor";
+          }
+          leaf down-delay {
+            type uint32;
+            default "5";
+            description
+              "Time interval (secs) to wait before indicating interface is down";
+          }
+          leaf up-delay {
+            type uint32;
+            default "5";
+            description
+              "Time interval (secs) to wait before indicating interface is up";
+          }
+        }
+        container icmp-echo-monitor {
+          presence "icmp-echo-monitor";
+          when "../type='icmp-echo-monitor'";
+          leaf dst-host {
+            type inet:host;
+            mandatory true;
+            description
+              "Destination IP address or DNS name to send icmp-echo to.";
+          }
+          leaf src-address {
+            type inet:ip-address;
+            description
+              "Source address to use for icmp-echo";
+          }
+          leaf interval {
+            type uint32 {
+              range "1..86400";
+            }
+            default "5";
+            description
+              "Time interval (in seconds) between icmp-echo requests";
+          }
+          leaf timeout {
+            type uint16 {
+              range "1..5000";
+            }
+            default "2000";
+            description
+              "Time to wait (in milliseconds) for icmp-echo response";
+          }
+          leaf successive-loss-threshold {
+            type uint8 {
+              range "1..32";
+            }
+            default "6";
+            description
+              "Number of consecutive icmp-echo requests for which
+               no responses need to be received before destination
+               is declared unreachable";
+          }
+          leaf successive-gain-threshold {
+            type uint8 {
+              range "1..32";
+            }
+            default "6";
+            description
+              "Number of consecutive icmp-echo requests for which
+               responses need to be received before destination is
+               declared reachable";
+          }
+        }
+        container bgp-neighbor-monitor {
+          presence "bgp-neighbor-monitor";
+          when "../type='bgp-neighbor-monitor'";
+          leaf down-delay {
+            type uint32;
+            default "300";
+            units "seconds";
+            description
+              "Time interval (secs) to wait before indicating neighbor is down";
+          }
+          leaf up-delay {
+            type uint32;
+            default "60";
+            units "seconds";
+            description
+              "Time interval (secs) to wait before indicating neighbor is up";
+          }
+        }
+        container status {
+          config false;
+          leaf state {
+            type boolean;
+            description
+              "True if state is up, false otherwise.";
+          }
+        }
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface/mdsif:vrrp" {
+    container verify-primary-path {
+      presence "verify primary path";
+      description
+        "This is used to automatically switch from Backup to Master
+         role if a remote host cannot be reached through the Master router.
+         An ICMP netmon service must be created first before being used
+         in this configuration. When the remote host cannot be reached, this VRRP
+         router will switch to Master mode by elevating its priority.
+         It will revert to the pre-configured priority when the remote host
+         becomes reachable again.";
+      leaf operation {
+        type leafref {
+          path "/serv:services/netmon:netmon/netmon:operation/netmon:name";
+        }
+        mandatory true;
+        description
+          "The network monitor operation to use for verifying
+           host-reachability through the primary path";
+      }
+    }
+  }
+  augment "/sys:system/mdssys:power/mdssys:restart-trigger" {
+    container netmon {
+      presence "netmon";
+      leaf initial-delay {
+        type uint32;
+        default "300";
+        units "seconds";
+        description
+          "Delay before netmon status is checked after system boot.";
+      }
+      leaf-list operation {
+        type leafref {
+          path "/serv:services/netmon:netmon/netmon:operation/netmon:name";
+        }
+        min-elements 1;
+        description
+          "The network monitor operation to use for triggering system restart.";
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface/mdscell:cell-config/mdscell:connection-profile/mdscell:service-recovery" {
+    container netmon {
+      presence "netmon";
+      leaf initial-delay {
+        type uint32;
+        default "300";
+        units "seconds";
+        description
+          "Delay before netmon status is checked after cell starts.";
+      }
+      leaf-list operation {
+        type leafref {
+          path "/serv:services/netmon:netmon/netmon:operation/netmon:name";
+        }
+        min-elements 1;
+        description
+          "The network monitor operation to use for triggering cell modem restart.";
+      }
+    }
+  }
+}

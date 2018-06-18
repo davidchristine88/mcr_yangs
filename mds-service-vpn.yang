@@ -1,0 +1,945 @@
+module mds-service-vpn {
+  namespace "com:gemds:services:vpn";
+  prefix vpn;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-if-gre {
+    prefix mds_gre;
+  }
+  import mds-services {
+    prefix serv;
+  }
+  import mds-service-firewall {
+    prefix fire;
+  }
+  import mds-security {
+    prefix sec;
+  }
+  import mds-certmgr {
+    prefix mdscert;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring vpn service.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-03-21 {
+    description
+      "Added configuration parameter to disable MOBIKE.";
+  }
+  revision 2016-10-11 {
+    description
+      "Added IPv6 support.";
+  }
+  revision 2016-04-15 {
+    description
+      "Added replay-window-size parameter.";
+  }
+  revision 2015-06-03 {
+    description
+      "Add IPsec transport (host-to-host) mode.";
+  }
+  revision 2015-04-13 {
+    description
+      "Changed path for certificates.";
+  }
+  revision 2015-03-27 {
+    description
+      "Encrypt passwords.";
+  }
+  revision 2015-02-11 {
+    description
+      "Add length limitations to string inputs";
+  }
+  revision 2014-10-09 {
+    description
+      "Added allowed character set in description/help message.";
+  }
+  revision 2014-08-26 {
+    description
+      "Added initiator-mode with always-on and on-demand options
+       for tunnel initiation by the initiator";
+  }
+  revision 2014-07-07 {
+    description
+      "Enable Windows 7 Clients to setup IKEv2.";
+  }
+  revision 2014-07-01 {
+    description
+      "Added generic static NAT.";
+  }
+  revision 2014-06-18 {
+    description
+      "Added filter and static nat to ipsec connection.";
+  }
+  revision 2014-05-09 {
+    description
+      "Added non-strict leaf refs to the pki items. Fixed whitespace.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-09-25 {
+    description
+      "Initial revision.";
+  }
+
+  typedef ike-version {
+    type enumeration {
+      enum "ike" {
+        description
+          "Initiator uses IKEv2, Responder accepts IKEv1 and IKEv2";
+      }
+      enum "ikev1" {
+        description
+          "Initiator uses IKEv1, Responder accepts IKEv1";
+      }
+      enum "ikev2" {
+        description
+          "Initiator uses IKEv2, Responder accepts IKEv2";
+      }
+    }
+  }
+
+  typedef ike-v1-mode {
+    type enumeration {
+      enum "main" {
+        description
+          "Main mode";
+      }
+      enum "aggresive" {
+        description
+          "Aggresive mode";
+      }
+    }
+  }
+
+  typedef ike-auth-method {
+    type enumeration {
+      enum "pub-key" {
+        description
+          "RSA/ECDSA public key based authentication";
+      }
+      enum "eap-ttls" {
+        description
+          "EAP-TTLS based authentication using certificates";
+      }
+      enum "pre-shared-key" {
+        description
+          "Pre-shared secret key based authentication";
+      }
+    }
+  }
+
+  grouping ike-endpoint {
+    choice ike-endpoint-type {
+      case any {
+        container any {
+          presence "Any peer";
+          description
+            "Any peer";
+        }
+      }
+      case address {
+        leaf address {
+          type inet:ip-address;
+          description
+            "IPv4 or IPv6 address";
+        }
+      }
+      case fqdn {
+        leaf fqdn {
+          type string {
+            length "1..255";
+          }
+          description
+            "Fully qualified domain name (FQDN)";
+        }
+      }
+    }
+  }
+
+  grouping ike-identity {
+    choice ike-identity-type {
+      case default {
+        container default {
+          presence "Default identity";
+          description
+            "IPv4 or IPv6 address configured via ike-endpoint 
+             or DN if pki is configured";
+        }
+      }
+      case address {
+        leaf address {
+          type inet:ip-address;
+          description
+            "IPv4 or IPv6 address";
+        }
+      }
+      case fqdn {
+        leaf fqdn {
+          type string {
+            length "1..255";
+          }
+          description
+            "Fully qualified domain name (FQDN)";
+        }
+      }
+      case user-fqdn {
+        leaf user-fqdn {
+          type string {
+            length "1..255";
+          }
+          description
+            "User fully qualified domain name (User-FQDN) e.g. email address";
+        }
+      }
+      case dn {
+        leaf dn {
+          type string {
+            length "1..255";
+          }
+          description
+            "Distinguished Name (DN)";
+        }
+      }
+    }
+  }
+
+  grouping pki {
+    leaf cert-type {
+      type enumeration {
+        enum "rsa" {
+          description
+            "PKI using RSA keys and certificates";
+        }
+        enum "ecdsa" {
+          description
+            "PKI using ECDSA keys and certificates";
+        }
+      }
+      mandatory true;
+      description
+        "certificate type";
+    }
+    leaf cert-id {
+      type string;
+      mandatory true;
+      description
+        "certificate identifier";
+    }
+    leaf key-id {
+      type string;
+      mandatory true;
+      description
+        "private key identifier";
+    }
+    leaf ca-cert-id {
+      type string;
+      mandatory true;
+      description
+        "Root ca-certificate identifier.";
+    }
+    leaf-list sub-ca-cert-ids {
+      type string;
+      description
+        "Sub/Intermediate ca-certificate identifiers.";
+    }
+  }
+
+  grouping attest-with-ima-input {
+    leaf conn-name {
+      mandatory true;
+      type sec:word-string;
+      description
+        "ipsec connection name (allowed chars: a-zA-Z0-9-_).";
+    }
+  }
+
+  grouping ike-security-association-state {
+    list security-association {
+      key "id";
+      leaf id {
+        type uint32;
+        description
+          "Unique index of this security association";
+      }
+      leaf name {
+        type string;
+        description
+          "Name of this security association.";
+      }
+      leaf state {
+        type string;
+        description
+          "State of the security association.";
+      }
+      leaf local-host {
+        type inet:ip-address;
+        description
+          "Local IKE endpoint address.";
+      }
+      leaf local-id {
+        type string;
+        description
+          "Local IKE identity.";
+      }
+      leaf remote-host {
+        type inet:ip-address;
+        description
+          "Remote IKE endpoint address.";
+      }
+      leaf remote-id {
+        type string;
+        description
+          "Remote IKE identity.";
+      }
+      leaf initiator {
+        type boolean;
+        description
+          "True, if we are the initiator of this IKE association.";
+      }
+      leaf initiator-spi {
+        type string;
+        description
+          "Initiator SPI (hex encoded string).";
+      }
+      leaf responder-spi {
+        type string;
+        description
+          "Responder SPI (hex encoded string).";
+      }
+      leaf ciphersuite {
+        type string;
+        description
+          "Specifices encryption/integrity/prf/dh algorithms being used to protect this association.";
+      }
+      leaf established-time {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds since this association was established.";
+      }
+      leaf rekey-time {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds before this association rekeys.";
+      }
+      leaf reauth-time {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds before this association re-authenticates.";
+      }
+    }
+  }
+
+  grouping ipsec-security-association-state {
+    list security-association {
+      key "id";
+      leaf id {
+        type uint32;
+        description
+          "Unique index of this security association";
+      }
+      leaf name {
+        type string;
+        description
+          "Name of this security association.";
+      }
+      leaf state {
+        type string;
+        description
+          "State of the security association.";
+      }
+      leaf mode {
+        type string;
+        description
+          "Mode of the security association.";
+      }
+      leaf udp-encap {
+        type boolean;
+        description
+          "Specifies whether UDP encapsulation is being used.";
+      }
+      leaf in-spi {
+        type string;
+        description
+          "Inbound Security Parameter Index (SPI)";
+      }
+      leaf out-spi {
+        type string;
+        description
+          "Outbound Security Parameter Index (SPI)";
+      }
+      leaf ciphersuite {
+        type string;
+        description
+          "Specifices encryption/integrity/prf/dh algorithms being used to protect this association.";
+      }
+      leaf in-bytes {
+        type uint32;
+        description
+          "Number of bytes received.";
+      }
+      leaf in-packets {
+        type uint32;
+        description
+          "Number of packets received.";
+      }
+      leaf in-last-use {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds since last inbound packet.";
+      }
+      leaf out-bytes {
+        type uint32;
+        description
+          "Number of bytes sent.";
+      }
+      leaf out-packets {
+        type uint32;
+        description
+          "Number of packets sent.";
+      }
+      leaf out-last-use {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds since last outbound packet.";
+      }
+      leaf rekey-time {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds before this association rekeys.";
+      }
+      leaf life-time {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds before this association expires.";
+      }
+      leaf install-time {
+        type uint32;
+        units "seconds";
+        description
+          "Numbers of seconds since this association was installed.";
+      }
+      leaf local-ts {
+        type string;
+        description
+          "Local traffic selector.";
+      }
+      leaf remote-ts {
+        type string;
+        description
+          "Remote traffic selector.";
+      }
+    }
+  }
+
+  augment "/serv:services" {
+    container vpn {
+      leaf enabled {
+        type boolean;
+        default "false";
+        must
+          "(.=\"true\" and ../ike and ../ipsec) or
+           (.=\"false\")" {
+          error-message "ike/ipsec must be confgured if vpn service is enabled";
+        }
+        description
+          "Whether or not to run the vpn service";
+      }
+      leaf strict-crl-policy {
+        type boolean;
+        default "false";
+        description
+          "if true, fail authentication on certificate revocation failure";
+      }
+      container dhcp {
+        leaf server-address {
+          type inet:ip-address;
+          description
+            "IP address of the DHCP server to use for assiging addresses to remote hosts.";
+        }
+      }
+      choice type {
+        case type-ipsec {
+          container ike {
+            presence "IKE";
+            list policy {
+              key "name";
+              min-elements 1;
+              leaf name {
+                type sec:word-string;
+                description
+                  "ASCII string identifying the policy (allowed chars: a-zA-Z0-9-_).";
+              }
+              leaf version {
+                type ike-version;
+                default "ike";
+              }
+              leaf mode {
+                when "../version='ikev1'";
+                type ike-v1-mode;
+                default "main";
+              }
+              leaf auth-method {
+                mandatory true;
+                type ike-auth-method;
+                must
+                  "(.=\"pub-key\" and ../pki) or
+                   (.=\"eap-ttls\" and ../pki) or 
+                   (.=\"pre-shared-key\" and ../pre-shared-key)" {
+                  error-message "pre-shared-key or pki must be configured";
+                }
+                description
+                  "IKE authentication method to use locally";
+              }
+              leaf pre-shared-key {
+                type aes-cfb-128-encrypted-string {
+                  length "1..352";
+                }
+                description
+                  "pre-shared secret key (ascii text)";
+              }
+              container pki {
+                presence "PKI configuration";
+                uses pki {
+                  refine "cert-type" {
+                    mandatory true;
+                  }
+                }
+              }
+              list ciphersuite {
+                key "name";
+                min-elements 1;
+                leaf name {
+                  type sec:word-string;
+                  description
+                    "ASCII string identifying the ciphersuite (allowed chars: a-zA-Z0-9-_).";
+                }
+                uses sec:ciphersuite {
+                  refine "encryption-algo" {
+                    default "aes128-cbc";
+                    description
+                      "IKE encryption algorithm";
+                  }
+                  refine "mac-algo" {
+                    default "sha256-hmac";
+                    description
+                      "IKE message authentication algorithm";
+                  }
+                  refine "dh-group" {
+                    default "dh14";
+                    description
+                      "IKE dh group";
+                  }
+                }
+              }
+              leaf life-time {
+                type uint16 {
+                  range "15..1440";
+                }
+                units "minutes";
+                default "180";
+                description
+                  "Time interval (in mins) after which an IKE SA expires";
+              }
+              leaf reauth {
+                type boolean;
+                default "false";
+                description
+                  "If true, rekeying of an IKE_SA also reauthenticates 
+                   the peer when using IKEv2. In IKEv1, re-authentictaion 
+                   is always done irrespective of this setting.";
+              }
+              leaf mobike {
+                type boolean;
+                default "true";
+                description
+                  "Enables the IKEv2 MOBIKE protocol defined by RFC 4555.";
+              }
+            }
+            list peer {
+              key "name";
+              min-elements 1;
+              leaf name {
+                type sec:word-string;
+                description
+                  "An ASCII string to identify the peer (allowed chars: a-zA-Z0-9-_).";
+              }
+              leaf ike-policy {
+                mandatory true;
+                type leafref {
+                  path "/serv:services/vpn/ike/policy/name";
+                }
+              }
+              container local-endpoint {
+                uses ike-endpoint {
+                  refine "ike-endpoint-type" {
+                    default "any";
+                  }
+                }
+                description
+                  "Local IKE endpoint";
+              }
+              container local-identity {
+                uses ike-identity {
+                  refine "ike-identity-type" {
+                    default "default";
+                  }
+                }
+                description
+                  "Local IKE ID to use for authentication with peer";
+              }
+              container peer-endpoint {
+                uses ike-endpoint {
+                  refine "ike-endpoint-type" {
+                    mandatory true;
+                  }
+                }
+                description
+                  "Peer IKE endpoint";
+              }
+              container peer-identity {
+                uses ike-identity {
+                  refine "ike-identity-type" {
+                    default "default";
+                  }
+                }
+                description
+                  "Peer IKE ID to use for authentication with peer";
+              }
+              leaf peer-identity-no-idr {
+                status obsolete;
+                type boolean;
+                default "true";
+                description
+                  "This field is OBSOLETE and confguring it has no effect. 
+                   It has been kept here to just maintain backwards compatibility.";
+              }
+              leaf role {
+                type enumeration {
+                  enum "responder" {
+                    description
+                      "listen for connection from peer";
+                  }
+                  enum "initiator" {
+                    description
+                      "start connection to peer";
+                  }
+                }
+                default "responder";
+                description
+                  "The role specifies whether this endpoint initiates connection
+                   to the peer or listens for connection from the peer";
+              }
+              leaf initiator-mode {
+                when "../role = 'initiator'";
+                type enumeration {
+                  enum "always-on" {
+                    description
+                      "always attempt to keep the tunnel connected.";
+                  }
+                  enum "on-demand" {
+                    description
+                      "attempt tunnel connection only when data is sent";
+                  }
+                }
+                default "always-on";
+                description
+                  "tunnel initiation mode";
+              }
+              leaf inactivity-timeout {
+                when "../initiator-mode = 'on-demand'";
+                type uint32;
+                units "seconds";
+                default "150";
+                description
+                  "time interval (in secs) after which tunnel is disconnected 
+                   if there is no traffic sent or received";
+              }
+              leaf dpd-enabled {
+                type boolean;
+                default "true";
+                description
+                  "If dead peer detection is enabled, an established 
+                   connection will be cleared on detecting a dead peer
+                   and retried after connection-retry-interval";
+              }
+              leaf dpd-interval {
+                type uint16 {
+                  range "30..3600";
+                }
+                units "seconds";
+                default "300";
+                description
+                  "Dead peer detection interval (in secs)";
+              }
+            }
+            container security-associations {
+              config false;
+              uses ike-security-association-state;
+            }
+          }
+          container ipsec {
+            presence "IPsec";
+            list policy {
+              key "name";
+              min-elements 1;
+              leaf name {
+                type sec:word-string;
+                description
+                  "ASCII string identifying the policy (allowed chars: a-zA-Z0-9-_).";
+              }
+              list ciphersuite {
+                key "name";
+                min-elements 1;
+                leaf name {
+                  type sec:word-string;
+                  description
+                    "ASCII string identifying the proposal (allowed chars: a-zA-Z0-9-_).";
+                }
+                uses sec:ciphersuite {
+                  refine "encryption-algo" {
+                    default "aes128-cbc";
+                    description
+                      "ESP encryption algorithm";
+                  }
+                  refine "mac-algo" {
+                    default "sha256-hmac";
+                    description
+                      "ESP message authentication algorithm";
+                  }
+                  refine "dh-group" {
+                    description
+                      "ESP dh group, if perfect forward secrecy is desired";
+                  }
+                }
+              }
+              leaf life-time {
+                type uint16 {
+                  range "15..1440";
+                }
+                units "minutes";
+                default "60";
+                description
+                  "Time interval (in mins) after which an IPSec SA expires";
+              }
+            }
+            list connection {
+              key "name";
+              min-elements 1;
+              leaf name {
+                type sec:word-string;
+                description
+                  "ASCII string to identify the connection (allowed chars: a-zA-Z0-9-_).";
+              }
+              leaf ike-peer {
+                mandatory true;
+                type leafref {
+                  path "/serv:services/vpn/ike/peer/name";
+                }
+                description
+                  "VPN Peer";
+              }
+              leaf ipsec-policy {
+                mandatory true;
+                type leafref {
+                  path "/serv:services/vpn/ipsec/policy/name";
+                }
+              }
+              must "/serv:services/vpn/dhcp/server-address or not(host-to-net/remote-virtual-address/from-dhcp)" {
+                error-message
+                  "/services/vpn/dhcp/server-address must be configured if 
+                   remote virtual address is assigned using dhcp";
+              }
+              must
+                "(local-ip-subnet and remote-ip-subnets) or (local-ip6-subnet and remote-ip6-subnets) or 
+                 (host-to-net/local-ip-subnet and host-to-net/remote-virtual-address) or host-to-host" {
+                error-message
+                  "For net-to-net connection, local-ip-subnet and remote-ip-subnets or 
+                   local-ip6-subnet and remote-ip6-subnets must be configured.
+                   For host-to-net connection, host-to-net/local-ip-subnet and 
+                   host-to-net/remote-virtual-address must be configured.";
+              }
+              choice conn-type {
+                mandatory true;
+                case net-to-net {
+                  leaf local-ip-subnet {
+                    type inet:ipv4-prefix;
+                    description
+                      "Local IPv4 subnet";
+                  }
+                  leaf local-ip6-subnet {
+                    type inet:ipv6-prefix;
+                    description
+                      "Local IPv6 subnet";
+                  }
+                }
+                case host-to-net {
+                  container host-to-net {
+                    leaf local-ip-subnet {
+                      when "/serv:services/vpn/ike/peer[current()/../../ike-peer]/role = 'responder'";
+                      type inet:ipv4-prefix;
+                      description
+                        "Local IPv4 subnet";
+                    }
+                    container remote-virtual-address {
+                      when "../local-ip-subnet";
+                      choice assignment-type {
+                        mandatory true;
+                        case specified-by-remote {
+                          leaf specified-by-remote {
+                            type empty;
+                            description
+                              "Virtual IP address (remote inner tunnel address) requested by remote is assigned";
+                          }
+                        }
+                        case static-address {
+                          leaf static-address {
+                            type inet:ip-address;
+                            description
+                              "Virtual IP address (remote inner tunnel address) that will be assigned to remote.";
+                          }
+                        }
+                        case from-pool {
+                          leaf from-v4-pool {
+                            type inet:ipv4-prefix;
+                            description
+                              "Virtual IP address pool from which an address will be assigned to the remote";
+                          }
+                        }
+                        case from-dhcp {
+                          leaf from-dhcp {
+                            type empty;
+                            description
+                              "Obtain IP address from a DHCP server.";
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                case host-to-host {
+                  container host-to-host {
+                    presence "host-to-host";
+                  }
+                }
+              }
+              leaf-list remote-ip-subnets {
+                type inet:ipv4-prefix;
+                description
+                  "Private IPv4 subnet(s) behind the peer";
+              }
+              leaf-list remote-ip6-subnets {
+                type inet:ipv6-prefix;
+                description
+                  "Private IPv6 subnet(s) behind the peer";
+              }
+              leaf is-out-of-band-ima {
+                type boolean;
+                default "false";
+                description
+                  "Whether this is an out-of-band IMA ipsec connection";
+              }
+              leaf failure-retry-interval {
+                type uint8 {
+                  range "1..255";
+                }
+                units "minutes";
+                default "5";
+                description
+                  "connection failure retry time interval (in mins)";
+              }
+              leaf periodic-retry-interval {
+                type uint8 {
+                  range "15..255";
+                }
+                units "minutes";
+                default "60";
+                description
+                  "periodic attestation time interval (in mins)";
+              }
+              leaf replay-window-size {
+                type uint32;
+                description
+                  "Size of the IPsec replay window, in packets. Set to 0 to disable anti-replay protection.";
+              }
+              container filter {
+                leaf input {
+                  type leafref {
+                    path "/serv:services/fire:firewall/fire:filter/fire:name";
+                  }
+                }
+                leaf output {
+                  type leafref {
+                    path "/serv:services/fire:firewall/fire:filter/fire:name";
+                  }
+                }
+              }
+              container nat {
+                leaf static {
+                  type leafref {
+                    path "/serv:services/fire:firewall/fire:nat/fire:static/fire:rule-set/fire:name";
+                  }
+                }
+              }
+            }
+            container security-associations {
+              config false;
+              uses ipsec-security-association-state;
+            }
+          }
+        }
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface/mds_gre:gre-config" {
+    leaf ipsec-connection {
+      type leafref {
+        path "/serv:services/vpn:vpn/vpn:ipsec/vpn:connection/vpn:name";
+      }
+      description
+        "IPsec connection used to protect this tunnel";
+    }
+  }
+  rpc service-vpn-ipsec-attest-with-ima {
+    input {
+      uses attest-with-ima-input;
+    }
+    description
+      "triggers ad-hoc attestation with IMA for IPsec VPN";
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

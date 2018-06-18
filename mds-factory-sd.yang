@@ -1,0 +1,36 @@
+module mds-factory-sd {
+  namespace "com:gemds:mds-factory-sd";
+  prefix mdsfactsd;
+
+  import mds-factory {
+    prefix fact;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains factory-only level commands.
+     Copyright (c) 2015 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-01-05 {
+    description
+      "Initial revision.";
+  }
+
+  augment "/fact:factory" {
+    container sd {
+      leaf burnin-mode {
+        type boolean;
+        default "false";
+      }
+    }
+  }
+}

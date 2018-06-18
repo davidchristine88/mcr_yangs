@@ -1,0 +1,484 @@
+module mds-if-nx-common {
+  namespace "com:gemds:mds-if-nx-common";
+  prefix mds_nx_common;
+
+  import ietf-system {
+    prefix sys;
+  }
+  import mds-system {
+    prefix mdssys;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of common YANG definitions for
+     iNET-NG devices found in MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-09-02 {
+    description
+      "Expanded some descriptions.";
+  }
+  revision 2015-08-21 {
+    description
+      "Refactored some enumerations into typedefs.";
+  }
+  revision 2015-08-14 {
+    description
+      "Updated descriptions and set units to uniform style.";
+  }
+  revision 2015-08-03 {
+    description
+      "Refactored LN interface, added a rekey interval.";
+  }
+  revision 2015-03-27 {
+    description
+      "Added narrowband support.";
+  }
+  revision 2014-05-13 {
+    description
+      "Initial revision.";
+  }
+
+  typedef device-type {
+    type enumeration {
+      enum "remote" {
+        value 0;
+        description
+          "Provides connectivity to the wireless network";
+      }
+      enum "access-point" {
+        value 1;
+        description
+          "The gateway to the wireless network";
+      }
+      enum "store-and-forward" {
+        value 2;
+        description
+          "A remote that facilitates extension of the network to 
+           other remotes";
+      }
+    }
+    description
+      "The roles the radio can assume in the network";
+  }
+
+  typedef running-device-type {
+    type enumeration {
+      enum "remote" {
+        value 0;
+        description
+          "Provides connectivity to the wireless network";
+      }
+      enum "access-point" {
+        value 1;
+        description
+          "The gateway to the wireless network";
+      }
+      enum "store-and-forward" {
+        value 2;
+        description
+          "A remote that facilitates extension of the network to 
+           other remotes";
+      }
+      enum "test" {
+        value 3;
+        description
+          "Mode where the radio can perform diagnostic actions";
+      }
+    }
+    description
+      "The roles the radio can assume in the network";
+  }
+
+  typedef modem-type {
+    type enumeration {
+      enum "125kbps" {
+        value 0;
+        description
+          "Theoretical throughput of 125kbps";
+      }
+      enum "250kbps" {
+        value 1;
+        description
+          "Theoretical throughput of 250kbps";
+      }
+      enum "500kbps" {
+        value 2;
+        description
+          "Theoretical throughput of 500kbps";
+      }
+      enum "1000kbps" {
+        value 3;
+        description
+          "Theoretical throughput of 1000kbps with narrow bandwidth";
+      }
+      enum "1000Wkbps" {
+        value 4;
+        description
+          "Theoretical throughput of 1000kbps with higher sensitivity";
+      }
+      enum "1250kbps" {
+        value 5;
+        description
+          "Theoretical throughput of 1250kbps";
+      }
+      enum "auto" {
+        value 10;
+        description
+          "Automaticly selection of modem";
+      }
+    }
+    description
+      "Types of avaliable modems";
+  }
+
+  typedef ln-channel {
+    type enumeration {
+      enum "5KHz-3ksps" {
+        value 6;
+      }
+      enum "6.25KHz-4.8ksps" {
+        value 0;
+      }
+      enum "12.5KHz-9.6ksps" {
+        value 1;
+      }
+      enum "12.5KHz-10.0ksps" {
+        value 2;
+      }
+      enum "25KHz-16ksps" {
+        value 3;
+      }
+      enum "25KHz-20ksps" {
+        value 4;
+      }
+      enum "50KHz-40ksps" {
+        value 5;
+      }
+    }
+  }
+
+  typedef ln-modulation {
+    type enumeration {
+      enum "qpsk" {
+        value 0;
+        description
+          "Quadrature phase-shift keying";
+      }
+      enum "qam16" {
+        value 1;
+        description
+          "Quadrature amplitude modulation with 16 symbols";
+      }
+      enum "qam64" {
+        value 2;
+        description
+          "Quadrature amplitude modulation with 64 symbols";
+      }
+      enum "automatic" {
+        value 3;
+        description
+          "Adaptively selects which modulation is used on a per-transmission
+           basis. This allows remotes that are closer to take advantage of a
+           higher data rate for directed messages, and remotes that are farther
+           away or obstructed to use a more conservative modulation.";
+      }
+    }
+  }
+
+  typedef lw-modulation {
+    type enumeration {
+      enum "qpsk-1/4" {
+        value 2;
+        description
+          "";
+      }
+      enum "qpsk-1/2" {
+        value 3;
+        description
+          "";
+      }
+      enum "qpsk-3/4" {
+        value 4;
+        description
+          "";
+      }
+      enum "16qam-1/2" {
+        value 5;
+        description
+          "";
+      }
+      enum "16qam-3/4" {
+        value 6;
+        description
+          "";
+      }
+    }
+  }
+
+  typedef lw-channel {
+    type enumeration {
+      enum "570KHz" {
+        value 2;
+        description
+          "";
+      }
+      enum "315KHz" {
+        value 3;
+        description
+          "";
+      }
+      enum "195KHz" {
+        value 4;
+        description
+          "";
+      }
+    }
+  }
+
+  typedef ln-modulation-ser {
+    type enumeration {
+      enum "9600-3FSK" {
+        value 3;
+        description
+          "";
+      }
+      enum "9600M-3FSK" {
+        value 4;
+        description
+          "";
+      }
+      enum "19200-3FSK" {
+        value 5;
+        description
+          "";
+      }
+      enum "19200M-3FSK" {
+        value 6;
+        description
+          "";
+      }
+      enum "19200N-7FSK" {
+        value 8;
+        description
+          "";
+      }
+      enum "38400N-7FSK" {
+        value 9;
+        description
+          "";
+      }
+      enum "3200-3FSK" {
+        value 10;
+        description
+          "";
+      }
+      enum "19200E-7FSK" {
+        value 11;
+        description
+          "";
+      }
+    }
+  }
+
+  typedef ln-fec-type {
+    type enumeration {
+      enum "disabled" {
+        value 0;
+      }
+      enum "adaptive-gain" {
+        value 1;
+      }
+      enum "low-gain" {
+        value 2;
+      }
+    }
+  }
+
+  typedef test-mode-timer-type {
+    type uint16 {
+      range "1..4320";
+    }
+  }
+
+  grouping nx-security-parms {
+    leaf security-mode {
+      type enumeration {
+        enum "none" {
+          description
+            "Provide no device authentication or data privicy";
+        }
+        enum "psk" {
+          description
+            "Use pre-shared key authentication protocol";
+        }
+        enum "eap" {
+          description
+            "Use encapsulated authentication protocol";
+        }
+      }
+      default "none";
+      description
+        "The type of over the air authentication to perform";
+    }
+    leaf encryption {
+      type enumeration {
+        enum "none" {
+          description
+            "No data privacy";
+        }
+        enum "aes128-ccm" {
+          description
+            "Protect data with 128-bit AES encryption using CCM mode";
+        }
+        enum "aes256-ccm" {
+          description
+            "Protect data with 256-bit AES encryption using CCM mode";
+        }
+      }
+      default "none";
+      description
+        "The type of over the air encryption to perform";
+    }
+    leaf eap-mode {
+      type enumeration {
+        enum "eap-tls" {
+          description
+            "RFC 5216";
+        }
+      }
+      default "eap-tls";
+      description
+        "The type of EAP to perform";
+    }
+    leaf passphrase {
+      type aes-cfb-128-encrypted-string {
+        length "8..128";
+      }
+      description
+        "The passphrase used in PSK mode";
+    }
+    leaf radius-server {
+      when
+        "../security-mode = 'eap' and
+         ../../device-mode = 'access-point'";
+      type leafref {
+        path "/sys:system/mdssys:mds-radius/mdssys:servers/mdssys:name";
+      }
+      description
+        "Radius server for eap authentication";
+    }
+    leaf rekey-interval {
+      type uint32 {
+        range "0 | 30..525600";
+      }
+      units "minutes";
+      default "180";
+      description
+        "Required elapsed time, in minutes, before renegotiating encryption keys. 
+         Enter 0 to renegotiate keys after one million packets have been sent, 
+         instead of using a time-based interval.";
+    }
+  }
+
+  grouping nx-basic-parms {
+    leaf network-name {
+      type string {
+        length "1..31";
+      }
+      default "mds_nx";
+      description
+        "The name of the network.  Used to identify the logical network that
+         the device should join. If the network name does not match, the device
+         will log an event to identify network name collisions.";
+    }
+    leaf data-compression {
+      type enumeration {
+        enum "none" {
+          description
+            "No data compression";
+        }
+        enum "lzo" {
+          description
+            "Compresses the over the air traffic with the LZO algorithm";
+        }
+      }
+      default "none";
+      description
+        "Over the air data compression algorithm";
+    }
+    leaf header-compression {
+      type boolean;
+      default "false";
+      description
+        "Use Robust Header Compression to compress the IP headers. This feature
+         is most useful in applications that rely on IP packets with small 
+         payloads, such as terminal server operations or MODBUS polling.";
+      reference "RFC 3095";
+    }
+  }
+
+  grouping remote-db-mgmt {
+    leaf remote-age-time {
+      type uint32 {
+        range "180..max";
+      }
+      units "seconds";
+      default "600";
+      description
+        "Length of inactivity on this device before it is disconnected.";
+    }
+    leaf endpoint-age-time {
+      type uint32 {
+        range "60..max";
+      }
+      units "seconds";
+      default "300";
+      description
+        "Length of inactivity on this endpoint before it is removed from the database.";
+    }
+    leaf allow-retransmit {
+      type boolean;
+      default "true";
+      description
+        "Allow retransmission of remote-to-remote traffic. When enabled the
+         AP will retransmit traffic from one remote to another based on the MAC
+         address. It will also resend any remote's broadcast traffic to all
+         other remotes.";
+    }
+    leaf arp-cache {
+      type boolean;
+      default "false";
+      description
+        "Allow the local radio to transparently reply to ARPs it knows the
+         address for without sending it across the link, similar to proxy ARP.";
+    }
+    leaf max-rohc-sessions {
+      type uint16 {
+        range "0..500";
+      }
+      default "30";
+      description
+        "Controls the number of ROHC sessions to allowed to create";
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

@@ -1,0 +1,158 @@
+module mds-service-gps {
+  namespace "com:gemds:services:gps";
+  prefix gps;
+
+  import tailf-xsd-types {
+    prefix xs;
+  }
+  import mds-services {
+    prefix serv;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring and monitoring GPS service.
+     
+     Copyright (c) 2015 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-06-06 {
+    description
+      "Added Satellite Info Table";
+  }
+  revision 2015-01-07 {
+    description
+      "Initial.";
+  }
+
+  typedef display-string {
+    type string {
+      length "0 .. 255";
+    }
+  }
+
+  augment "/serv:services" {
+    container gps {
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to run GPS service";
+      }
+      leaf source {
+        type display-string;
+        description
+          "If specified, the data is collected only from this GPS data source.
+           Otherwise, data is collected from all sources found in the system.
+           This parameter is useful if there is more than one data source in the 
+           system and you would like to collect data only from a specific source.";
+      }
+      container status {
+        config false;
+        leaf fix-mode {
+          type enumeration {
+            enum "no-fix";
+            enum "2d-fix";
+            enum "3d-fix";
+          }
+          description
+            "fix mode";
+        }
+        leaf time {
+          type string;
+          description
+            "UTC time";
+        }
+        leaf latitude {
+          type xs:double;
+          description
+            "Latitude";
+        }
+        leaf longitude {
+          type xs:double;
+          description
+            "Longitude";
+        }
+        leaf altitude {
+          type xs:double;
+          description
+            "Altitude (ft)";
+        }
+        leaf speed {
+          type xs:double;
+          description
+            "Speed (mph)";
+        }
+        leaf heading {
+          type xs:double;
+          description
+            "True Heading (degree)";
+        }
+        leaf satellites-visible {
+          type uint8;
+          description
+            "The number of satellites currently visible.";
+        }
+        leaf satellites-used {
+          type uint8;
+          description
+            "The number of satellites being used for GPS fix.";
+        }
+        list satellites {
+          description
+            "The list of all visible satellites, and their status";
+          key "prn";
+          leaf prn {
+            type uint16;
+            description
+              "PRN (pseudorandom noise code) of satellite";
+          }
+          leaf used {
+            type boolean;
+            description
+              "True if this satellite is used in current GPS fix.";
+          }
+          leaf elevation {
+            type uint16;
+            description
+              "elevation of satellite";
+          }
+          leaf azimuth {
+            type uint16;
+            description
+              "azimuth of satellite";
+          }
+          leaf snr {
+            type uint16;
+            units "dB";
+            description
+              "signal-to-noise ratio";
+          }
+        }
+      }
+      list sources {
+        config false;
+        key "name";
+        leaf name {
+          type display-string;
+          description
+            "Name of GPS data source";
+        }
+        leaf device {
+          type string;
+          description
+            "Name of the GPS data source device";
+        }
+      }
+    }
+  }
+}

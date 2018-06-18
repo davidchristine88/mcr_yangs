@@ -1,0 +1,47 @@
+module mds-factory-nx {
+  namespace "com:gemds:mds-factory-nx";
+  prefix mdsfactnx;
+
+  import mds-factory {
+    prefix fact;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains factory-only level commands.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2013-10-22 {
+    description
+      "Added modem 1250";
+  }
+  revision 2013-10-09 {
+    description
+      "Initial revision.";
+  }
+
+  typedef nx_modem {
+    type enumeration {
+      enum "m125";
+      enum "m250";
+      enum "m500";
+      enum "m1000";
+      enum "m1000W";
+      enum "m1250";
+    }
+  }
+
+  augment "/fact:factory" {
+    container nx;
+  }
+}

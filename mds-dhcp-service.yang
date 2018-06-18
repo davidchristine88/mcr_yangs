@@ -1,0 +1,319 @@
+module mds-dhcp-service {
+  namespace "com:gemds:dhcp-service";
+  prefix dhcp;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module defines the configuration settings for running a dhcp
+     server.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-10-11 {
+    description
+      "Added IPv6 SLAAC and DHCPv6 support.";
+  }
+  revision 2015-12-04 {
+    description
+      "Removed min and max lease time parameters.";
+  }
+  revision 2014-06-06 {
+    description
+      "Added validation for subnets.";
+  }
+  revision 2014-05-20 {
+    description
+      "Improve description on subnet-mask leaf.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-06-05 {
+    description
+      "Initial revision.";
+  }
+
+  augment "/serv:services" {
+    container dhcp {
+      list leases {
+        config false;
+        description
+          "A table showing the currently assigned DHCP leases";
+        key "ip-address";
+        leaf ip-address {
+          type inet:ip-address;
+          description
+            "The IP address assigned to the client";
+        }
+        leaf mac-address {
+          type yang:mac-address;
+          description
+            "The MAC address of the client.";
+        }
+        leaf expiry-time {
+          type yang:date-and-time;
+          description
+            "The expiry time of the lease.";
+        }
+        leaf hostname {
+          type string;
+          description
+            "The hostname of the client, if available";
+        }
+        leaf client-id {
+          type string;
+          description
+            "The client ID of the client, if available";
+        }
+      }
+      must
+        "enabled = 'false' or
+         (enabled and v4subnet) or
+         (enabled and v6subnet) or
+         (enabled and relay/ipv4) or
+         (enabled and relay/ipv6)" {
+        error-message
+          "A v4subnet or v6subnet must be configured when enabling the DHCP server. 
+           Or An IPv4 or IPv6 relay must be configured when enabling DHCP relay.";
+      }
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to run the dhcp service";
+      }
+      leaf default-lease-time {
+        type uint32;
+        default "43200";
+        description
+          "The length in seconds that will be assigned to a lease if the client
+           requesting the lease does not ask for a specific expiration time.
+           This is used for both DHCPv4 and DHCPv6 leases (it is also known as
+           the 'valid lifetime' in DHCPv6).";
+      }
+      list v4subnet {
+        key "network";
+        leaf network {
+          type inet:ipv4-prefix;
+          description
+            "An IP address with prefix length (eg: x.x.x.x/yy),
+             that will designate the subnet given in the DHCP lease.";
+        }
+        leaf range-start {
+          type inet:ipv4-address;
+          mandatory true;
+          description
+            "The starting (low) address of IP address to assign on this
+             subnet";
+        }
+        leaf range-end {
+          type inet:ipv4-address;
+          mandatory true;
+          description
+            "The ending (high) address of IP address to assign on this subnet";
+        }
+        leaf broadcast-address {
+          type inet:ipv4-address;
+          mandatory false;
+          description
+            "An optional broadcast address to pass to the client";
+        }
+        leaf router {
+          type inet:ipv4-address;
+          mandatory false;
+          description
+            "An optional default router to pass to the client";
+        }
+        leaf-list domain-name-servers {
+          type inet:ipv4-address;
+          ordered-by user;
+          description
+            "An optional list of DNS servers to pass to the client";
+        }
+        leaf domain-name {
+          type inet:domain-name;
+          mandatory false;
+          description
+            "An optional domain-name to pass to the client";
+        }
+        leaf-list domain-search {
+          type inet:domain-name;
+          ordered-by user;
+          description
+            "An optional search list of domain names to pass to the client";
+        }
+        leaf-list ntp-servers {
+          type inet:host;
+          ordered-by user;
+          description
+            "An optional list of NTP servers to pass to the client";
+        }
+        leaf-list netbios-name-servers {
+          type inet:host;
+          ordered-by user;
+          description
+            "An optional list of RFC 1001/1002 NBNS name servers listed in
+             order of preference. NetBIOS Name Service is currently more
+             commonly referred to as WINS.";
+        }
+      }
+      list v6subnet {
+        key "network";
+        leaf network {
+          type inet:ipv6-prefix;
+          description
+            "An IPv6 network address with prefix length (eg: xx:xx:1::/yy),
+             that will designate the subnet given in the DHCP lease.";
+        }
+        leaf constructor-interface {
+          type if:interface-ref;
+          description
+            "The interface that is used to construct IPv6 range.";
+        }
+        leaf range-start {
+          type inet:ipv6-address;
+          description
+            "The starting (low) address of IP address to assign on this
+             subnet";
+        }
+        leaf range-end {
+          type inet:ipv6-address;
+          description
+            "The ending (high) address of IP address to assign on this subnet";
+        }
+        leaf-list domain-name-servers {
+          type inet:ipv6-address;
+          ordered-by user;
+          description
+            "An optional list of DNS servers to pass to the client";
+        }
+        leaf-list domain-search {
+          type inet:domain-name;
+          ordered-by user;
+          description
+            "An optional search list of domain names to pass to the client";
+        }
+        leaf-list ntp-servers {
+          type inet:host;
+          ordered-by user;
+          description
+            "An optional list of NTP servers to pass to the client";
+        }
+      }
+      container relay {
+        list interface-group {
+          key "name";
+          leaf name {
+            type string;
+            description
+              "Name of the interface group.";
+          }
+          leaf-list interface {
+            type if:interface-ref;
+            min-elements 1;
+            description
+              "Name of the interface.";
+          }
+          description
+            "Group of interfaces on which relay service is provided.";
+        }
+        container ipv4 {
+          presence "ipv4 relay";
+          list server-group {
+            key "name";
+            leaf name {
+              type string;
+              description
+                "Name of the IPv4 server group.";
+            }
+            leaf-list address {
+              type inet:ipv4-address;
+              min-elements 1;
+              description
+                "IPv4 address of the server.";
+            }
+            description
+              "Group of IPv4 servers.";
+          }
+          leaf interface-group {
+            type leafref {
+              path "../../interface-group/name";
+            }
+            mandatory true;
+            description
+              "Interface group serviced by IPv4 relay.";
+          }
+          leaf active-server-group {
+            type leafref {
+              path "../server-group/name";
+            }
+            mandatory true;
+            description
+              "Server group used by IPv4 relay.";
+          }
+        }
+        container ipv6 {
+          presence "ipv6 relay";
+          list server-group {
+            key "name";
+            leaf name {
+              type string;
+              description
+                "Name of the IPv6 server group.";
+            }
+            leaf-list address {
+              type inet:ipv6-address;
+              min-elements 1;
+              description
+                "IPv6 address of the server.";
+            }
+            description
+              "Group of IPv6 servers.";
+          }
+          leaf interface-group {
+            type leafref {
+              path "../../interface-group/name";
+            }
+            mandatory true;
+            description
+              "Interface group serviced by IPv6 relay.";
+          }
+          leaf active-server-group {
+            type leafref {
+              path "../server-group/name";
+            }
+            mandatory true;
+            description
+              "Server group used by IPv6 relay.";
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,556 @@
+module mds-logging {
+  namespace "com:gemds:mds-logging";
+  prefix mdslogging;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+  import mds-common {
+    prefix mc;
+  }
+  import SNMP-NOTIFICATION-MIB {
+    prefix snmp_notif;
+  }
+  import mds-certmgr {
+    prefix mdscert;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a the YANG definitions for controlling logging
+     on MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-05-15 {
+    description
+      "Added clear current alarms rpc.";
+  }
+  revision 2015-04-13 {
+    description
+      "Changed path for certificates.";
+  }
+  revision 2015-02-27 {
+    description
+      "Added ability to clear alarms.";
+  }
+  revision 2015-02-11 {
+    description
+      "Reorganize event log export actions and status";
+  }
+  revision 2014-08-26 {
+    description
+      "Added non-srict leafref to certificates/keys loaded in the system
+       for tls parameters";
+  }
+  revision 2014-06-18 {
+    description
+      "Added missing dependency statement.";
+  }
+  revision 2013-12-13 {
+    description
+      "Changed the event-rule leafref to a non-strict-leafref to handle default
+       event rules being removed on upgrade.";
+  }
+  revision 2013-08-29 {
+    description
+      "Changed the event log system.";
+  }
+  revision 2013-07-18 {
+    description
+      "Added event-log-export-status.";
+  }
+  revision 2013-07-12 {
+    description
+      "Renamed logging-export-event-log RPC to export-event-log.";
+  }
+  revision 2013-06-14 {
+    description
+      "Change default syslog proto to UDP.";
+  }
+  revision 2013-05-13 {
+    description
+      "Added nacm restrictions, SNMP support, Alarm support, exporting of event
+       log, and updates to Syslog/TLS restrictions";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-08-27 {
+    description
+      "Initial revision.";
+  }
+
+  grouping export-input {
+    uses mc:external-file;
+  }
+
+  grouping test-alarm-input {
+    leaf user-message {
+      type string;
+    }
+    leaf enabled {
+      mandatory true;
+      type enumeration {
+        enum "true";
+        enum "false";
+        enum "auto";
+      }
+    }
+  }
+
+  grouping event-rule-contents {
+    leaf description {
+      type string;
+    }
+    leaf local {
+      description
+        "If true, this event is stored in the local event log.";
+      type boolean;
+      default "true";
+    }
+    leaf priority {
+      type priority-enumeration;
+      default "notice";
+    }
+    leaf syslog-facility {
+      type enumeration {
+        enum "auth" {
+          value 4;
+        }
+        enum "authpriv" {
+          value 10;
+        }
+        enum "cron" {
+          value 9;
+        }
+        enum "daemon" {
+          value 3;
+        }
+        enum "ftp" {
+          value 11;
+        }
+        enum "kern" {
+          value 0;
+        }
+        enum "lpr" {
+          value 6;
+        }
+        enum "mail" {
+          value 2;
+        }
+        enum "news" {
+          value 7;
+        }
+        enum "syslog" {
+          value 5;
+        }
+        enum "user" {
+          value 1;
+        }
+        enum "uucp" {
+          value 8;
+        }
+        enum "local0" {
+          value 16;
+        }
+        enum "local1" {
+          value 17;
+        }
+        enum "local2" {
+          value 18;
+        }
+        enum "local3" {
+          value 19;
+        }
+        enum "local4" {
+          value 20;
+        }
+        enum "local5" {
+          value 21;
+        }
+        enum "local6" {
+          value 22;
+        }
+        enum "local7" {
+          value 23;
+        }
+      }
+      default "user";
+    }
+    leaf syslog {
+      description
+        "If true, forward events of this type to a syslog server.";
+      type boolean;
+      default "false";
+    }
+    leaf snmp-notification {
+      description
+        "If true, generate an SNMP notification (trap or inform)
+         for events of this type.";
+      type boolean;
+      default "false";
+    }
+    leaf snmp-notify-name {
+      when "../snmp-notification='true'";
+      type leafref {
+        path "/snmp_notif:SNMP-NOTIFICATION-MIB/snmp_notif:snmpNotifyTable/snmp_notif:snmpNotifyEntry/snmp_notif:snmpNotifyName";
+      }
+      description
+        "snmpNotifyName that to be used to select a set of management
+         targets which should receive notifications, as well as the type
+         of notification (trap/inform) which should be sent to each
+         selected management target. If the notify-name is not configured,
+         the notification is sent to all configured targets";
+    }
+    leaf netconf-notification {
+      description
+        "If true, generate a NETCONF notification for events of this type.";
+      type boolean;
+      default "false";
+    }
+    leaf alarm {
+      description
+        "If true, generate an alarm output for events of this type.";
+      type boolean;
+      default "false";
+    }
+    leaf-list alarm-outputs {
+      description
+        "Generate an alarm on all of these alarm outputs.";
+      type leafref {
+        path "../../default-alarm-output/name";
+      }
+    }
+  }
+
+  grouping alarm-output-settings {
+    leaf signal-period {
+      type uint32;
+      units "milliseconds";
+      default "1000";
+      description
+        "The total amount of time spent in a single cycle.";
+    }
+    leaf signal-duration {
+      type uint32;
+      units "milliseconds";
+      default "500";
+      description
+        "The amount of time the signal is on in a cycle.";
+    }
+  }
+
+  typedef priority-enumeration {
+    type enumeration {
+      enum "emerg" {
+        description
+          "system is unusable";
+      }
+      enum "alert" {
+        description
+          "action must be taken immediately";
+      }
+      enum "crit" {
+        description
+          "critical condition";
+      }
+      enum "err" {
+        description
+          "error condition";
+      }
+      enum "warning" {
+        description
+          "warning condition";
+      }
+      enum "notice" {
+        description
+          "normal but significant condition";
+      }
+      enum "info" {
+        description
+          "informational";
+      }
+      enum "debug" {
+        description
+          "debug-level messages";
+      }
+    }
+  }
+
+  container logging {
+    list event-rule {
+      nacm:default-deny-write;
+      description
+        "Entries in this list will override the default values specified in
+         the default-event-rule list.";
+      key "name";
+      leaf name {
+        type string;
+      }
+      uses event-rule-contents;
+    }
+    list default-event-rule {
+      nacm:default-deny-write;
+      description
+        "This non-user-writable list holds the factory defined default mapping
+         of system events to handling rules. If you wish to override these
+         default values, create a corresponding entry in the event-rule list.";
+      key "name";
+      leaf name {
+        type string;
+      }
+      uses event-rule-contents;
+    }
+    container syslog {
+      list server {
+        description
+          "A list of remote syslog servers to forward events to";
+        key "name";
+        must "((mdslogging:protocol != 'tls') and (mdslogging:protocol != 'tls6')) or (((mdslogging:protocol = 'tls') or (mdslogging:protocol = 'tls6')) and version = 'RFC5424' )" {
+          error-message "TLS can only be used on servers running the RFC5424 version of syslog.";
+        }
+        must "((mdslogging:protocol != 'tls') and (mdslogging:protocol != 'tls6')) or (((mdslogging:protocol = 'tls') or (mdslogging:protocol = 'tls6')) and boolean(tls-options/tls-ca-certificate) and boolean(tls-options/tls-client-certificate) and boolean(tls-options/tls-client-key))" {
+          error-message "All TLS options fields must be specified when using syslog over TLS";
+        }
+        leaf name {
+          description
+            "A unique name to identify this server configuration";
+          type string;
+        }
+        leaf ip {
+          description
+            "The hostnmae or IP address of the syslog server.";
+          type inet:host;
+          mandatory true;
+        }
+        leaf port {
+          description
+            "The port to connect to.";
+          type inet:port-number;
+          default "514";
+        }
+        leaf version {
+          description
+            "The syslog protocol version to use.";
+          type enumeration {
+            enum "RFC3164";
+            enum "RFC5424";
+          }
+          default "RFC3164";
+        }
+        leaf protocol {
+          description
+            "The transport protocol used to send syslog messages to this server";
+          type enumeration {
+            enum "tcp" {
+              description
+                "TCP over IPv4";
+            }
+            enum "udp" {
+              description
+                "UDP over IPv4";
+            }
+            enum "tls" {
+              description
+                "TLS over IPv4";
+            }
+            enum "tcp6" {
+              description
+                "TCP over IPv6";
+            }
+            enum "udp6" {
+              description
+                "UDP over IPv6";
+            }
+            enum "tls6" {
+              description
+                "TLS over IPv6";
+            }
+          }
+          default "udp";
+        }
+        container tls-options {
+          when "../protocol = 'tls' or ../protocol = 'tls6'";
+          leaf tls-ca-certificate {
+            type string;
+            description
+              "The CA certificate to use to validate syslog server certificate.";
+          }
+          leaf tls-client-certificate {
+            type string;
+            description
+              "The client certificate to use when communicating to the syslog
+               server over TLS.";
+          }
+          leaf tls-client-key {
+            type string;
+            description
+              "The name of the private key to use when communicating to the syslog
+               server over TLS.";
+          }
+        }
+      }
+      leaf message-format {
+        description
+          "The syslog text format.";
+        type enumeration {
+          enum "json_cee";
+          enum "text";
+        }
+        default "text";
+      }
+    }
+    container debug {
+      description
+        "This container holds various settings for enabling debug logging.
+         These settings should not be changed unless instructed to by GE technical
+         support.";
+      leaf verbose {
+        type boolean;
+        default "false";
+      }
+      leaf-list components {
+        type string;
+        description
+          "A List of components which will generate debugging events";
+      }
+      leaf devel-log-enabled {
+        type boolean;
+        default "false";
+        description
+          "When enabled, internal developer logging messages will be logged.";
+      }
+    }
+    list default-alarm-output {
+      nacm:default-deny-write;
+      description
+        "This non-user-writable list holds the default values for the various
+         alarm output settings on the system. If you wish to override these
+         default values, create a corisponding entry in the alarm-output list.";
+      key "name";
+      leaf name {
+        type string;
+        description
+          "The name of the alarm output.";
+      }
+      uses alarm-output-settings;
+    }
+    list alarm-output {
+      nacm:default-deny-write;
+      description
+        "Entries in this list will override the default values specified in
+         the default-alarm-output list.";
+      key "name";
+      leaf name {
+        type leafref {
+          path "../../default-alarm-output/name";
+        }
+        description
+          "The name of the alarm output.";
+      }
+      uses alarm-output-settings;
+    }
+    list event-log {
+      key "id";
+      config false;
+      leaf id {
+        type int64;
+      }
+      leaf time-stamp {
+        type yang:date-and-time;
+      }
+      leaf priority {
+        type priority-enumeration;
+      }
+      leaf event-type {
+        type string;
+      }
+      leaf status {
+        type string;
+      }
+      leaf message {
+        type string;
+      }
+    }
+    list current-alarms {
+      key "name";
+      config false;
+      leaf name {
+        type string;
+        description
+          "The name of the alarm output.";
+      }
+      list event {
+        description
+          "The events that are causing this alarm output";
+        key "event-log-id";
+        leaf event-log-id {
+          type string;
+          description
+            "ID of entry in event log. This may or may not still exist in the
+             event log.";
+        }
+        leaf event-type {
+          type string;
+        }
+        leaf status {
+          type string;
+        }
+        leaf message {
+          type string;
+        }
+        leaf time-stamp {
+          type yang:date-and-time;
+        }
+      }
+    }
+    container export-event-log-status {
+      config false;
+      description
+        "The current status of an event log export task.";
+      uses mc:file-transfer-status;
+    }
+    container export-event-log-file-limits {
+      config false;
+      description
+        "The file size limits for an exported event log file.";
+      uses mc:file-size-limits;
+    }
+  }
+  rpc clear-event-log {
+    description
+      "Clear the contents of the event log.";
+  }
+  rpc cancel-export-event-log {
+    description
+      "Cancel export of the event log.";
+  }
+  rpc export-event-log {
+    input {
+      uses export-input;
+    }
+  }
+  rpc clear-current-alarms;
+  rpc test-alarm {
+    input {
+      uses test-alarm-input;
+    }
+  }
+}

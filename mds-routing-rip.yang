@@ -1,0 +1,116 @@
+module mds-routing-rip {
+  namespace "com:gemds:mds-routing-rip";
+  prefix mds-routing-rip;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-routing {
+    prefix mds-routing;
+  }
+
+  description
+    "This module contains a collection of YANG definitions for
+     configuring RIP routing protocol.
+     
+     Copyright (c) 2015 by GE MDS LLC. All rights reserved.";
+
+  grouping rip-authentication {
+    leaf type {
+      type enumeration {
+        enum "none";
+        enum "md5";
+      }
+      default "none";
+      description
+        "Specifies RIP packet authentication.";
+    }
+    list password {
+      when "../type = 'md5'";
+      min-elements 1;
+      key "text";
+      leaf text {
+        type aes-cfb-128-encrypted-string {
+          length "1..255";
+        }
+        description
+          "Specifies a password to be used for authentication";
+      }
+      leaf id {
+        type uint16;
+        description
+          "Specifies the ID to be used to identify which password is used to authenticate protocol packets.";
+      }
+    }
+  }
+
+  grouping rip-common {
+    uses mds-routing:protocol-common;
+    container authentication {
+      uses rip-authentication;
+    }
+  }
+
+  grouping rip-interface-common {
+    leaf cost {
+      type uint16;
+      description
+        "Specifies output cost (metric) of an interface.";
+    }
+    leaf mode {
+      type enumeration {
+        enum "multicast" {
+          description
+            "RIP sends packets using multicast.";
+        }
+        enum "broadcast" {
+          description
+            "RIP sends packets using broadcast.";
+        }
+      }
+      description
+        "Specifies the mode for RIP to use on the interface.";
+    }
+    container authentication {
+      presence "authentication";
+      uses rip-authentication;
+    }
+  }
+
+  grouping rip {
+    uses rip-common;
+    list interface {
+      key "name";
+      min-elements 1;
+      leaf name {
+        type if:interface-ref;
+        description
+          "The interface on which the protocol is activated with given interface-specific options.";
+      }
+      uses rip-interface-common;
+    }
+  }
+
+  augment "/mds-routing:routing" {
+    container rip {
+      presence "RIP configiuration";
+      uses rip;
+      description
+        "Configuration of RIPv2.";
+    }
+  }
+  augment "/mds-routing:routing-state" {
+    container rip {
+      config false;
+      uses mds-routing:protocol-state;
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

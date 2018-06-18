@@ -1,0 +1,560 @@
+module mds-if-ln {
+  namespace "com:gemds:narrowband";
+  prefix mds_ln;
+
+  import mds-certmgr {
+    prefix mdscert;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-if-bond {
+    prefix mds_bond;
+  }
+  import mds-if-nx-common {
+    prefix mds_nx_common;
+  }
+  import mds-if-nx-status {
+    prefix mds_nx_status;
+  }
+
+  contact
+    "GE MDS";
+  description
+    "This module contains a collection of YANG definitions for
+     Licenced narrowband devices found in MDS products.
+     
+     Copyright (c) 2013 GE MDS.  All rights reserved.";
+
+  revision 2017-11-15 {
+    description
+      "Changed legacy-address to unit address.";
+  }
+  revision 2017-10-27 {
+    description
+      "Added system id for fsk modes.";
+  }
+  revision 2016-11-16 {
+    description
+      "Added simplex-mode configuration when operating in an orbit-MPR";
+  }
+  revision 2016-08-26 {
+    description
+      "Changed test mode rssi type.";
+  }
+  revision 2016-07-25 {
+    description
+      "Removed unused enable-saf parameter, now controlled by top level allow-beta-features flag.";
+  }
+  revision 2016-04-15 {
+    description
+      "Changed default TTL to 5 seconds.";
+  }
+  revision 2016-01-12 {
+    description
+      "Added store-and-forward radio mode.";
+  }
+  revision 2015-09-24 {
+    description
+      "Fixed the range on test mode timer.";
+  }
+  revision 2015-09-02 {
+    description
+      "Expanded some descriptions.";
+  }
+  revision 2015-08-21 {
+    description
+      "Refactored enumerations, and changes some descriptions.";
+  }
+  revision 2015-08-14 {
+    description
+      "Updated defaults, updated descriptions, set units to uniform style.";
+  }
+  revision 2015-08-03 {
+    description
+      "Changed FEC to an enum, refactored the actions to key the radio,
+       added rekey interval to allow the user to rekey less often.";
+  }
+  revision 2015-06-12 {
+    description
+      "Add radio-mode";
+  }
+  revision 2015-04-13 {
+    description
+      "Changed path for certificates. Fixed descriptions, added
+       automatic mode to modulation, added data retries";
+  }
+  revision 2014-11-05 {
+    description
+      "Initial revision.";
+  }
+
+  feature orbit-mpr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MPR family.";
+  }
+
+  feature orbit-mcr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MCR family.";
+  }
+
+  identity ln {
+    base if:interface-type;
+    description
+      "Narrowband Radio";
+  }
+
+  identity ln-nic {
+    base if:interface-type;
+    description
+      "An individual LN radio card in a master station";
+  }
+
+  typedef frequency {
+    type string {
+      pattern "(\\d{2,4}(\\.\\d{1,5})?|none)";
+    }
+  }
+
+  typedef test-states {
+    type enumeration {
+      enum "receive";
+      enum "keyed-random";
+      enum "keyed-unmod";
+      enum "stop";
+    }
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_ln:ln'";
+    description
+      "Add support for GE MDS LN interfaces";
+    container ln-config {
+      must "not (current()/../if:type = 'mds_ln:ln') or device-mode" {
+        error-message
+          "ln-config/device-mode must be configured for
+           LN devices";
+      }
+      must "not (current()/../if:name = /if:interfaces/if:interface[if:name != current()/../if:name]/mds_bond:bond-config/mds_bond:member/mds_bond:interface and device-mode='access-point')" {
+        error-message "LN in access-point mode cannot be added to a bond interface.";
+      }
+      presence "LN Configuration";
+      description
+        "The configuration of the GE MDS Narrowband interface";
+      leaf-list members {
+        if-feature orbit-mpr;
+        type if:interface-ref;
+        description
+          "The member LN Radio interfaces which compose this logical LN master station grouping";
+        must "/if:interfaces/if:interface[ if:name=current()/.]/if:type = 'mds_ln:ln-nic'" {
+          error-message "Only LN-NICs can be members of the LN device.";
+        }
+      }
+      list virtual-radio-channel {
+        key "serial-device";
+        description
+          "The list of virtual serial devices and their virtual radio channel (VRC) settings.  This is only applicable in packet-with-mac mode.";
+        leaf serial-device {
+          type string {
+            pattern "[0-9a-zA-Z]{1,20}" {
+              error-message "Must be 1 to 20 alphanumeric characters";
+              description
+                "alphanumeric string";
+            }
+          }
+          description
+            "The name of the serial channel";
+        }
+        leaf id {
+          type uint8 {
+            range "1..63";
+          }
+          default "1";
+          description
+            "The VRC used when sending and receiving messages over the air.";
+        }
+        leaf listen-on-all {
+          type boolean;
+          default "false";
+          description
+            "Whether all messages from all VRCs will be recieved.";
+        }
+        leaf talk-to {
+          type enumeration {
+            enum "vrc-1";
+            enum "vrc-2";
+            enum "vrc-3";
+            enum "all";
+          }
+          default "vrc-1";
+          description
+            "The VRC used when sending messages over the air.";
+        }
+        leaf listen-on {
+          type enumeration {
+            enum "vrc-1";
+            enum "vrc-2";
+            enum "vrc-3";
+            enum "all";
+            enum "none";
+          }
+          default "all";
+          description
+            "The VRC used when receiving messages over the air.";
+        }
+      }
+      leaf radio-mode {
+        type enumeration {
+          enum "standard" {
+            value 1;
+            description
+              "Sets the radio to operate in a point to multipoint network topology.";
+          }
+          enum "store-and-forward" {
+            value 2;
+            description
+              "Sets the radio to operate in a point to multipoint with store and forward network topology.";
+          }
+          enum "transparent-serial" {
+            value 3;
+            description
+              "Sets the radio to operate in compatibility mode for SD and x710 networks.";
+          }
+          enum "packet-with-mac" {
+            value 4;
+            description
+              "Sets the radio to operate in compatibility mode for SD packet with mac.";
+          }
+        }
+        default "standard";
+        description
+          "Controls the operating mode of the NIC. Setting must match on all radios on the network.
+           
+           Standard: Normal setting for point to multipoint networks.
+           
+           Store and forward: Special setting for point to multipoint networks that include store and forward nodes. Please note that in order for this radio to operate as a store and forward node, you must also set Device Mode to 'store and forward.'
+           
+           Transparent Serial: Special setting for networks with SD or x710 radios in transparent serial mode.";
+      }
+      leaf device-mode {
+        must "not( (.= 'store-and-forward-node') and ( (../radio-mode = 'standard') or (../radio-mode = 'transparent-serial') ) )" {
+          error-message "To enable the Store and Forward device mode, you must first set Radio Mode to Store and Forward.";
+        }
+        type enumeration {
+          enum "remote" {
+            value 0;
+            description
+              "Provides connectivity to the wireless network";
+          }
+          enum "access-point" {
+            value 1;
+            description
+              "The gateway to the wireless network";
+          }
+          enum "store-and-forward-node" {
+            value 2;
+            description
+              "Operate as a store-and-forward node";
+          }
+        }
+        description
+          "Sets the role the radio will assume in the network.
+                     
+           Access point, remote: Valid in all Radio Modes.
+                     
+           Store and forward: Valid only when the Radio Mode is set to store and forward.";
+      }
+      uses mds_nx_common:nx-basic-parms {
+        refine "network-name" {
+          default "mds_ln";
+        }
+        refine "data-compression" {
+          default "lzo";
+        }
+        refine "header-compression" {
+          default "true";
+        }
+      }
+      leaf power {
+        type uint8 {
+          range "20..40";
+        }
+        units "dBm";
+        default "40";
+        description
+          "The transmit power of the radio";
+      }
+      leaf tx-frequency {
+        type frequency;
+        units "MHz";
+        description
+          "The transmit frequency of the radio in MHz";
+      }
+      leaf rx-frequency {
+        type frequency;
+        units "MHz";
+        description
+          "The receive frequency of the radio in MHz";
+      }
+      leaf simplex-mode {
+        if-feature orbit-mpr;
+        type boolean;
+        default "false";
+        description
+          "If operating in simplex mode using a single antenna connector,
+           this option must be set to true.";
+      }
+      leaf channel {
+        type mds_nx_common:ln-channel;
+        units "bandwidth-symbol-rate";
+        default "12.5KHz-10.0ksps";
+        description
+          "The bandwidth and symbol rate of the radio";
+      }
+      leaf modulation {
+        type mds_nx_common:ln-modulation;
+        default "automatic";
+        description
+          "Sets the modulation the NIC uses.
+           
+           'Automatic' adaptively selects which modulation is used on a 
+           per-transmission basis. This allows remotes that are closer to take 
+           advantage of a higher data rate for directed messages, and remotes 
+           that are farther away or obstructed to use a more conservative 
+           modulation.
+           
+           Radios with fixed modulation settings will operate ONLY at the
+           modulation that you specify. If the specified modulation is higher
+           than the connection can support, no traffic will flow. If the
+           connection can support a higher modulation, the radio will not
+           take advantage of this. We recommend that 'automatic' be used in all 
+           cases other than bench tests.";
+      }
+      leaf serial-modulation {
+        if-feature orbit-mcr;
+        type mds_nx_common:ln-modulation-ser;
+        default "9600-3FSK";
+        description
+          "Sets the modulation the NIC uses.
+                     
+           Radios in transparent serial mode will run with fixed modulation.
+           If the specified modulation is higher than the connection can
+           support, no traffic will flow. If the connection can support a
+           higher modulation, the radio will not take advantage of this.";
+      }
+      leaf system-id {
+        if-feature orbit-mcr;
+        type uint8 {
+          range "0..8";
+        }
+        default "0";
+        description
+          "Set the system ID of the NIC.";
+      }
+      leaf fec {
+        type mds_nx_common:ln-fec-type;
+        default "disabled";
+        description
+          "Forward error correction (FEC) adds redundancy to control
+           errors over noisy communication channels and improve
+           sensitivity.  FEC redundancy increases the effective data
+           transmission size, for this reason two methods are offered.
+           Adaptive chooses the optimal redundancy based on size
+           offering the highest sensitivity.  Low gain always uses the
+           minimal amount of redundancy to provide the smallest impact
+           on size while increasing sensitivity.  FEC parameter must
+           match on all radios in the network.";
+      }
+      leaf data-key-hold-time {
+        if-feature orbit-mcr;
+        type uint8 {
+          range "1..255";
+        }
+        default "2";
+        description
+          "How many idle frames to wait for data, before we dekey.";
+      }
+      leaf dlink-set-timeout {
+        if-feature orbit-mcr;
+        type uint32 {
+          range "30..1800";
+        }
+        units "seconds";
+        default "900";
+        description
+          "How long to wait for reassociation after dlink change before rolling back the dlink change.";
+      }
+      container security {
+        must "encryption='none' or security-mode!='none' or ../radio-mode='packet-with-mac'" {
+          error-message
+            "Encryption requires a security mode other than
+             none.";
+        }
+        must "passphrase or security-mode!='psk'" {
+          error-message "PSK mode reqires a passphrase.";
+        }
+        description
+          "The security configuration of the interface";
+        uses mds_nx_common:nx-security-parms {
+          refine "encryption";
+        }
+        container pki {
+          description
+            "The public key infrastructure used by EAP-TLS";
+          leaf cert-id {
+            type string;
+            description
+              "certificate identifier";
+          }
+          leaf key-id {
+            type string;
+            description
+              "private key identifier";
+          }
+          leaf ca-cert-id {
+            type string;
+            description
+              "ca-certificate chain identifier";
+          }
+        }
+      }
+      container advanced-config {
+        description
+          "The advanced configuration of the interface";
+        leaf data-retries {
+          type uint8 {
+            range "0..15";
+          }
+          default "7";
+          description
+            "Number of times to retry unicast data before declaring NACK";
+        }
+        leaf nic-id {
+          type uint16 {
+            range "0 | 240..250";
+          }
+          default "0";
+          description
+            "Manually overrides the NIC identifier";
+        }
+        leaf gateway-id {
+          type uint16 {
+            range "0 | 240..250";
+          }
+          default "0";
+          description
+            "Sets the ID of the device you wish to connect to.  ";
+        }
+        leaf unit-address {
+          if-feature orbit-mcr;
+          type uint16;
+          description
+            "Legacy DLINK unit address. If not specified, defaults to the last 4 digits of the radio's platform
+             serial number. Valid values: 10000-65000, or the last 4 digits of the platform serial address.";
+        }
+        leaf legacy-store-and-forward {
+          if-feature orbit-mcr;
+          type boolean;
+          default "false";
+          description
+            "Set store and forward while in legacy mode";
+        }
+        leaf packet-ttl {
+          type uint16 {
+            range "100..65535";
+          }
+          default "5000";
+          units "milliseconds";
+          description
+            "Length of inactivity for all over the air messaging before registering a disconnect.";
+        }
+        uses mds_nx_common:remote-db-mgmt {
+          refine "remote-age-time" {
+            default "900";
+          }
+          refine "arp-cache";
+        }
+        leaf qam16-threshold {
+          type int8 {
+            range "-100..0";
+          }
+          default "-85";
+          units "dBm";
+          description
+            "When the radio is using automatic modulation, it will automatically
+             switch to QAM16 modulation when the averaged calculated RSSI drops
+             below this value. Setting the value to 0 will disable QAM16
+             modulation.";
+        }
+        leaf qam64-threshold {
+          type int8 {
+            range "-90..0";
+          }
+          default "-70";
+          units "dBm";
+          description
+            "When the radio is using automatic modulation, it will automatically
+             switch to QAM64 modulation when the averaged calculated RSSI drops
+             below this value. Setting the value to 0 will disable QAM64
+             modulation.";
+        }
+        leaf dlink-mode {
+          if-feature orbit-mcr;
+          type enumeration {
+            enum "root";
+            enum "gate";
+            enum "node";
+            enum "repeater";
+            enum "peer";
+          }
+          default "node";
+          description
+            "DLINK mode.";
+        }
+      }
+    }
+  }
+  augment "/if:interfaces-state/if:interface" {
+    when "if:type = 'mds_ln:ln' or if:type = 'mds_ln:ln-nic'";
+    description
+      "Add support for GE MDS narrowband interfaces";
+    container ln-status {
+      config false;
+      description
+        "The status of the GE MDS LN interface";
+      uses mds_nx_status:ln-status {
+        refine "link-status";
+        refine "current-device-mode";
+        refine "active-nic";
+        refine "mac-stats";
+        refine "ap-info";
+        refine "last-rx-packet";
+        refine "connected-remotes";
+        refine "endpoints";
+        refine "routes";
+      }
+      container test {
+        leaf test-mode-time {
+          type uint32;
+          units "minutes";
+          description
+            "The number of minutes left of test mode";
+        }
+        leaf test-state {
+          type test-states;
+          description
+            "Gives the current test mode state";
+        }
+        leaf test-rssi {
+          type int8;
+          units "dBm";
+          description
+            "The current signal RSSI.";
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,595 @@
+module mds-routing-ospf {
+  namespace "com:gemds:mds-routing-ospf";
+  prefix mds-routing-ospf;
+
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import mds-routing {
+    prefix mds-routing;
+  }
+
+  description
+    "This module contains a collection of YANG definitions for
+     configuring OSPF routing protocol.
+     
+     Copyright (c) 2015 by GE MDS LLC. All rights reserved.";
+
+  grouping ospf-common {
+    uses mds-routing:protocol-common;
+    leaf rfc1583compatibility {
+      type boolean;
+      default "false";
+      description
+        "This option controls compatibility of routing table calculation with RFC 1583";
+    }
+    leaf stub-router {
+      type boolean;
+      default "false";
+      description
+        "This option configures the router to be a stub router, i.e., a router that participates in the OSPF topology but 
+         does not allow transit traffic. In OSPFv2, this is implemented by advertising maximum metric for outgoing links, as 
+         suggested by RFC 3137";
+    }
+    leaf ecmp-routes {
+      type boolean;
+      default "false";
+      description
+        "This option specifies whether OSPF is allowed to generate ECMP (equal-cost multipath) routes. Such routes are used 
+         when there are several directions to the destination, each with the same (computed) cost.";
+    }
+    leaf ecmp-nexthops-limit {
+      type uint16 {
+        range "1..16";
+      }
+      default "16";
+      description
+        "Specifies a limit on maximal number of nexthops in one ECMP route.";
+    }
+  }
+
+  grouping ospf-area-common {
+    leaf stub {
+      type boolean;
+      default "false";
+      description
+        "This option configures the area to be a stub area. External routes are not flooded into stub areas. 
+         Also summary LSAs can be limited in stub areas (see option summary). By default, the area is not a stub 
+         area.";
+    }
+    leaf nssa {
+      type boolean;
+      default "false";
+      description
+        "This option configures the area to be a NSSA (Not-So-Stubby Area). NSSA is a variant of a stub area which 
+         allows a limited way of external route propagation. Global external routes are not propagated into a NSSA, 
+         but an external route can be imported into NSSA as a (area-wide) NSSA-LSA (and possibly translated and/or 
+         aggregated on area boundary).";
+    }
+    leaf summary {
+      when "../stub = 'true' or ../nssa = 'true'";
+      type boolean;
+      default "false";
+      description
+        "This option controls propagation of summary LSAs into stub or NSSA areas. If enabled, summary LSAs are propagated 
+         as usual, otherwise just the default summary route (0.0.0.0/0) is propagated (this is sometimes called totally stubby area). 
+         If a stub area has more area boundary routers, propagating summary LSAs could lead to more efficient routing at the cost of 
+         larger link state database.";
+    }
+    leaf default-route-nssa {
+      when "../nssa = 'true'";
+      type boolean;
+      default "false";
+      description
+        "When summary option is enabled, default summary route is no longer propagated to the NSSA. In that case, this option allows 
+         to originate default route as NSSA-LSA to the NSSA.";
+    }
+    leaf default-route-cost {
+      when "../stub = 'true' or ../nssa = 'true'";
+      type uint16;
+      default "1000";
+      description
+        "This option controls the cost of a default route propagated to stub and NSSA areas.";
+    }
+    leaf default-route-cost2 {
+      when "../default-route-nssa = 'true'";
+      type uint16;
+      description
+        "When a default route is originated as NSSA-LSA, its cost can use either type 1 or type 2 metric. This option allows to specify 
+         the cost of a default route in type 2 metric. By default, type 1 metric (default-route-cost) is used.";
+    }
+  }
+
+  grouping ospf-link-common {
+    leaf hello-interval {
+      type uint16;
+      description
+        "Specifies interval in seconds between sending of Hello messages. On broadcast and point-to-point links, 
+         the default is 10 seconds. On NBMA, the default is 30 seconds. NOTE: All routers on the same network need 
+         to have the same hello interval.";
+    }
+    leaf retransmit-interval {
+      type uint16;
+      default "5";
+      description
+        "Specifies interval in seconds between retransmissions of unacknowledged Link State Advertisements (LSAs).";
+    }
+    leaf dead-interval {
+      must "(not(../hello-interval) and ../dead-interval > 30) or (../hello-interval and (../dead-interval > ../hello-interval))" {
+        error-message "The dead interval must be larger than the hello interval if latter is specified otherwise it should be greater than 30 secs";
+        description
+          "The value MUST be greater than 'hello-interval'.";
+      }
+      type uint16;
+      description
+        "When the router does not receive any messages from a neighbor in dead-interval seconds, it will consider the neighbor down.";
+    }
+    leaf wait-interval {
+      type uint16;
+      default "40";
+      description
+        "After start, router waits for the specified number of seconds between starting election and building adjacency.";
+    }
+    container authentication {
+      leaf type {
+        type enumeration {
+          enum "none";
+          enum "md5";
+        }
+        default "none";
+        description
+          "Specifies OSPF packet authentication type on this interface.";
+      }
+      list password {
+        when "../type = 'md5'";
+        min-elements 1;
+        key "text";
+        leaf text {
+          type aes-cfb-128-encrypted-string {
+            length "1..255";
+          }
+          description
+            "Specifies a password to be used for authentication";
+        }
+        leaf id {
+          type uint16;
+          description
+            "Specifies the ID to be used to identify which password is used to authenticate protocol packets.";
+        }
+      }
+    }
+  }
+
+  typedef ospf-network-type {
+    type enumeration {
+      enum "bcast" {
+        description
+          "On broadcast (BCAST) networks (like ethernet), flooding and Hello messages are sent using multicasts 
+           (a single packet for all the neighbors). A designated router is elected and it is responsible 
+           for synchronizing the link-state databases and originating network LSAs. This network type cannot 
+           be used on physically NBMA networks and on unnumbered networks (networks without proper IP prefix).";
+      }
+      enum "ptp" {
+        description
+          "Point-to-point (PTP) networks connect just 2 routers together. No election is performed and no network LSA 
+           is originated, which makes it simpler and faster to establish. This network type is useful not only for 
+           physically PtP ifaces (like PPP or tunnels), but also for broadcast networks used as PtP links. This network 
+           type cannot be used on physically NBMA networks.";
+      }
+      enum "nbma" {
+        description
+          "On Non-Broadcast Multiple Access (NBMA) networks, the packets are sent to each neighbor separately because of 
+           lack of multicast capabilities.  Like on broadcast networks, a designated router is elected, which plays a central 
+           role in propagation of LSAs.  This network type cannot be used on unnumbered networks.";
+      }
+      enum "ptmp" {
+        description
+          "Point to Multipoint (PTMP) is another network type designed to handle NBMA networks. In this case the NBMA network 
+           is treated as a collection of PtP links. This is useful if not every pair of routers on the NBMA network has direct 
+           communication, or if the NBMA network is used as an (possibly unnumbered) PtP link.";
+      }
+    }
+    description
+      "Type of connected network";
+  }
+
+  grouping ospf-interface-common {
+    leaf network-type {
+      type ospf-network-type;
+      description
+        "Type of connected network is determined automatically. However, this option can be used to override it";
+    }
+    leaf priority {
+      when "../network-type = 'bcast' or ../network-type = 'nbma'";
+      type uint16;
+      default "1";
+      description
+        "On every multiple access network (e.g., the Ethernet) Designed Router and Backup Designed router 
+         are elected. These routers have some special functions in the flooding process. Higher priority 
+         increases preferences in this election. Routers with priority 0 are not eligible.";
+    }
+    leaf poll-interval {
+      when "../network-type = 'nbma'";
+      type uint16;
+      default "20";
+      description
+        "Specifies interval in seconds between sending of Hello messages for some neighbors on NBMA network.";
+    }
+    leaf cost {
+      type uint16;
+      default "10";
+      description
+        "Specifies output cost (metric) of an interface.";
+    }
+    uses ospf-link-common;
+  }
+
+  grouping ospf {
+    uses ospf-common;
+    list area {
+      key "id";
+      min-elements 1;
+      description
+        "Configuration of OSPF area.";
+      leaf id {
+        type yang:dotted-quad;
+        description
+          "The OSPF area ID (32-bit number in the form of an IPv4 address (a.b.c.d). 
+           The most important area is the backbone (ID 0.0.0.0) to which every other 
+           area must be connected.";
+      }
+      uses ospf-area-common;
+      must "not(stub = 'true' and nssa = 'true')" {
+        error-message "Cannot configure an area as both a stub and nssa";
+      }
+      list area-range {
+        key "prefix";
+        description
+          "Definition of area IP ranges. This is used in summary LSA origination. Hidden networks are not propagated into other areas.";
+        leaf prefix {
+          type inet:ipv4-prefix;
+          description
+            "IPv4 prefix";
+        }
+        leaf hidden {
+          type boolean;
+          default "false";
+          description
+            "Hide the network";
+        }
+      }
+      list interface {
+        key "name";
+        min-elements 1;
+        leaf name {
+          type if:interface-ref;
+          description
+            "The interface on which the protocol is activated with given interface-specific options.";
+        }
+        uses ospf-interface-common;
+        list neighbor {
+          when "../network-type = 'nbma' or ../network-type = 'ptmp'";
+          key "address";
+          leaf address {
+            type inet:ipv4-address;
+            description
+              "A set of neighbors to which Hello messages on non-broadcast or point-to-multipoint networks are to be sent.";
+          }
+          leaf eligible {
+            type boolean;
+            description
+              "Specifies whether the neighbor is eligible to become designated router";
+          }
+        }
+      }
+      list virtual-link {
+        key "router-id";
+        leaf router-id {
+          type yang:dotted-quad;
+          description
+            "Virtual link to router with the given router id. Virtual link acts as a point-to-point interface belonging to backbone. 
+             This configuration should be specified only in the transit area.";
+        }
+        uses ospf-link-common;
+      }
+    }
+  }
+
+  typedef ospf-interface-state {
+    type enumeration {
+      enum "down" {
+        description
+          "Interface is down.";
+      }
+      enum "loopback" {
+        description
+          "Interface has no link.";
+      }
+      enum "waiting" {
+        description
+          "The interface is waiting to declare the state of the link as DR. 
+           The amount of time the interface waits is determined by the wait timer.";
+      }
+      enum "point-to-point" {
+        description
+          "The interface is point-to-point state. In this state, the interface is fully 
+           functional and starts exchanging hello packets with all of its neighbors.";
+      }
+      enum "dr" {
+        description
+          "The router is the DR on the network to which this interface is connected, 
+           and it establishes OSPF adjacencies with all other routers on this broadcast 
+           network.";
+      }
+      enum "bdr" {
+        description
+          "The router is the BDR on the network to which this interface is connected, 
+           and it establishes adjacencies with all other routers on the broadcast network.";
+      }
+      enum "drother" {
+        description
+          "The router is neither the DR nor the BDR on the network to which this interface 
+           is connected, and it establishes adjacencies only with the DR and the BDR.";
+      }
+    }
+    description
+      "OSPF interface state type.";
+  }
+
+  grouping ospf-state {
+    list area {
+      key "id";
+      leaf id {
+        type yang:dotted-quad;
+        description
+          "Area ID";
+      }
+      leaf stub {
+        type boolean;
+        description
+          "Indicates whether this is a stub area";
+      }
+      leaf nssa {
+        type boolean;
+        description
+          "Indicates whether this is a not-so-stubby-area (NSSA)";
+      }
+      leaf transit {
+        type boolean;
+        description
+          "Indicates whether this is a transit area";
+      }
+      leaf nssa-translation {
+        type boolean;
+      }
+      leaf num-interfaces {
+        type uint16;
+        description
+          "Num of interfaces in this area";
+      }
+      leaf num-neighbors {
+        type uint16;
+        description
+          "Num of neighbors in this area";
+      }
+      leaf num-adjacent-neighbors {
+        type uint16;
+        description
+          "Num of adjacent neighbors in this area";
+      }
+      leaf-list area-networks {
+        type string;
+        description
+          "Area networks";
+      }
+    }
+    list interface {
+      key "name";
+      leaf name {
+        type string;
+        description
+          "Name of the interface.";
+      }
+      leaf virtual-link {
+        type boolean;
+        description
+          "True if this is a virtual link.";
+      }
+      leaf peer-address {
+        when "../virtual-link = 'true'";
+        type inet:ip-address;
+        description
+          "Peer IP address.";
+      }
+      leaf transit-area-id {
+        when "../virtual-link = 'true'";
+        type yang:dotted-quad;
+        description
+          "Transit area ID.";
+      }
+      leaf network-type {
+        when "../virtual-link = 'false'";
+        type ospf-network-type;
+        description
+          "Type of connected network.";
+      }
+      leaf area-id {
+        when "../virtual-link = 'false'";
+        type yang:dotted-quad;
+        description
+          "Area ID.";
+      }
+      leaf state {
+        type ospf-interface-state;
+        description
+          "State of this interface.";
+      }
+      leaf priority {
+        type uint16;
+        description
+          "Priority of this interface as used during DR/BDR election";
+      }
+      leaf cost {
+        type uint16;
+        description
+          "OSPF Cost (metric) of this interface.";
+      }
+      leaf hello-interval {
+        type uint16;
+        description
+          "Time interval in seconds between sending of hello packets.";
+      }
+      leaf poll-interval {
+        when "../network-type = 'nbma'";
+        type uint16;
+        description
+          "Time interval in seconds between sending of hello packets.";
+      }
+      leaf wait-interval {
+        type uint16;
+        description
+          "Timer interval in seconds between starting election and building adjacency.";
+      }
+      leaf dead-interval {
+        type uint16;
+        description
+          "Time interval in seconds to wait before declaring a neighbor dead.";
+      }
+      leaf retransmit-interval {
+        type uint16;
+        description
+          "Time interval in seconds between retransmissions of unacknowledged Link State Advertisements (LSAs).";
+      }
+      leaf designated-router-id {
+        when "../network-type = 'bcast' or ../network-type = 'nbma'";
+        type yang:dotted-quad;
+        description
+          "Router ID of the designated router on this network.";
+      }
+      leaf designated-router-address {
+        when "../network-type = 'bcast' or ../network-type = 'nbma'";
+        type inet:ip-address;
+        description
+          "IP address of the designated router on this network.";
+      }
+      leaf backup-designated-router-id {
+        when "../network-type = 'bcast' or ../network-type = 'nbma'";
+        type yang:dotted-quad;
+        description
+          "Router ID of the backup designated router on this network.";
+      }
+      leaf backup-designated-router-address {
+        when "../network-type = 'bcast' or ../network-type = 'nbma'";
+        type inet:ip-address;
+        description
+          "IP address of the backup designated router on this network.";
+      }
+    }
+    list neighbor {
+      leaf id {
+        type yang:dotted-quad;
+        description
+          "ID of the neighbor router.";
+      }
+      leaf address {
+        type inet:ip-address;
+        description
+          "IP Address of the neighbor router.";
+      }
+      leaf interface {
+        type string;
+        description
+          "Interface on which the neighbor has formed adjacency.";
+      }
+      leaf state {
+        type string;
+        description
+          "Functional state of the neighbor router.";
+      }
+      leaf priority {
+        type uint16;
+        description
+          "Priority  of the neighbor router.";
+      }
+      leaf dead-time {
+        type uint16;
+        description
+          "The amount of time remaining that the router waits to receive an 
+           OSPF hello packet from the neighbor before declaring the neighbor 
+           down.";
+      }
+    }
+    list lsa {
+      leaf scope {
+        type string;
+        description
+          "Scope of this LSA";
+      }
+      leaf type {
+        type string;
+        description
+          "Link State type";
+      }
+      leaf ls-id {
+        type yang:dotted-quad;
+        description
+          "Link State ID";
+      }
+      leaf adv-router {
+        type yang:dotted-quad;
+        description
+          "Advertising router ID";
+      }
+      leaf age {
+        type uint16;
+        description
+          "Age of this LSA in seconds.";
+      }
+      leaf sequence {
+        type string;
+        description
+          "Sequence number of this LSA.";
+      }
+      leaf checksum {
+        type string;
+        description
+          "Checksum of this LSA.";
+      }
+    }
+  }
+
+  augment "/mds-routing:routing" {
+    container ospf {
+      presence "OSPF Configuration";
+      uses ospf;
+      description
+        "Configuration of OSPFv2.";
+    }
+  }
+  augment "/mds-routing:routing-state" {
+    container ospf {
+      config false;
+      uses mds-routing:protocol-state;
+      uses ospf-state {
+        refine "area";
+        refine "interface";
+        refine "neighbor";
+        refine "lsa";
+      }
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

@@ -1,0 +1,632 @@
+module mds-common {
+  namespace "com:gemds:mds-common";
+  prefix mds-common;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring common components.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-07-25 {
+    description
+      "Add allow-beta-features parameter";
+  }
+  revision 2015-02-27 {
+    description
+      "Encrypt passwords";
+  }
+  revision 2015-02-11 {
+    description
+      "Changed file-transfer-status enum 'active' to 'transferring'
+       and added enums 'cancelling' and 'cancelled'";
+  }
+  revision 2014-08-26 {
+    description
+      "Removed local-storage option from location configuration";
+  }
+  revision 2014-04-02 {
+    description
+      "Removed eap from the list of ethertypes";
+  }
+  revision 2014-03-14 {
+    description
+      "Added ethertypes and changed the default tftp block size.";
+  }
+  revision 2014-03-04 {
+    description
+      "Added groupings and typedefs used by QoS.";
+  }
+  revision 2014-02-24 {
+    description
+      "Updated TFTP timeout and block-size limits to restrict the values
+       to those listed in RFC2348 and RFC2349.";
+  }
+  revision 2014-01-27 {
+    description
+      "Moved cell-dual-sim feature to be an augmentation from
+       mds-if-cell.";
+  }
+  revision 2014-01-17 {
+    description
+      "Added product-features.";
+  }
+  revision 2013-07-16 {
+    description
+      "Update NACM rules.";
+  }
+  revision 2013-05-13 {
+    description
+      "Added file-transfer-status and changed from base-url to address.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-10-02 {
+    description
+      "Initial revision.";
+  }
+
+  typedef protocol-type {
+    type enumeration {
+      enum "all" {
+        value 255;
+      }
+      enum "sctp" {
+        value 132;
+      }
+      enum "tcp" {
+        value 6;
+      }
+      enum "udp" {
+        value 17;
+      }
+      enum "icmp" {
+        value 1;
+      }
+      enum "esp" {
+        value 50;
+      }
+    }
+    description
+      "protocol type";
+  }
+
+  typedef ether-type {
+    type enumeration {
+      enum "any";
+      enum "ipv4";
+      enum "arp";
+      enum "rarp";
+      enum "vlan";
+      enum "ipx";
+      enum "ipv6";
+      enum "mpls-unicast";
+      enum "mpls-multicast";
+      enum "pppoe-discovery";
+      enum "pppoe-session";
+      enum "goose" {
+        reference "IEC 61850";
+      }
+      enum "gse" {
+        reference "IEC 61850";
+      }
+      enum "profinet";
+      enum "provider-bridging";
+      enum "ieee1588";
+      enum "q-in-q";
+    }
+    description
+      "ethernet type";
+  }
+
+  typedef hex-value {
+    type string {
+      pattern "0x[0-9a-fA-F]*" {
+        error-message "Must have a prefix of 0x followed by hex characters.";
+        description
+          "hex-value";
+      }
+    }
+  }
+
+  typedef service-type {
+    type enumeration {
+      enum "bgp" {
+        value 179;
+      }
+      enum "bootp" {
+        value 67;
+        description
+          "uses port 67 as server and port 68 for client";
+      }
+      enum "dhcp" {
+        value 68;
+        description
+          "uses port 67 as server and port 68 for client";
+      }
+      enum "dhcpv6" {
+        value 546;
+        description
+          "uses port 547 as server and port 546 for client";
+      }
+      enum "dns" {
+        value 53;
+      }
+      enum "ftp" {
+        value 20;
+        description
+          "uses port 20 for data and port 21 for control";
+      }
+      enum "gdoi" {
+        value 848;
+      }
+      enum "http" {
+        value 80;
+      }
+      enum "https" {
+        value 443;
+      }
+      enum "ike" {
+        value 500;
+      }
+      enum "imap" {
+        value 143;
+      }
+      enum "imapv3" {
+        value 220;
+      }
+      enum "irc" {
+        value 194;
+      }
+      enum "l2tp" {
+        value 1701;
+      }
+      enum "ldap" {
+        value 389;
+      }
+      enum "ldaps" {
+        value 636;
+      }
+      enum "modbus" {
+        value 502;
+      }
+      enum "netconf" {
+        value 830;
+      }
+      enum "ntp" {
+        value 123;
+      }
+      enum "pop2" {
+        value 109;
+      }
+      enum "pop3" {
+        value 110;
+      }
+      enum "pptp" {
+        value 1723;
+      }
+      enum "ptp" {
+        value 319;
+        description
+          "uses port 319 for events and port 320 for messaging";
+      }
+      enum "radius" {
+        value 1812;
+        description
+          "uses port 1812 for auth and port 1813 for accounting";
+      }
+      enum "rip" {
+        value 520;
+      }
+      enum "ripng" {
+        value 521;
+      }
+      enum "rtsp" {
+        value 554;
+      }
+      enum "sip" {
+        value 5060;
+      }
+      enum "smtp" {
+        value 25;
+      }
+      enum "snmp" {
+        value 161;
+      }
+      enum "ssh" {
+        value 22;
+      }
+      enum "syslog" {
+        value 514;
+      }
+      enum "telnet" {
+        value 23;
+      }
+      enum "tftp" {
+        value 69;
+      }
+      enum "traceroute" {
+        value 33434;
+      }
+    }
+  }
+
+  grouping file-server {
+    choice protocol {
+      mandatory true;
+      case tftp {
+        container tftp {
+          leaf address {
+            mandatory true;
+            type string;
+            description
+              "Remote server hostname or IP address";
+          }
+          leaf block-size {
+            mandatory false;
+            type uint16 {
+              range "8..65464";
+            }
+            default "1024";
+            description
+              "TFTP blocksize as defined in RFC2348";
+          }
+          leaf port {
+            mandatory false;
+            type uint16;
+            default "69";
+            description
+              "UDP port number";
+          }
+          leaf timeout {
+            mandatory false;
+            type uint32 {
+              range "1..255";
+            }
+            default "30";
+            units "seconds";
+            description
+              "TFTP Timeout as defined in RFC2349, in seconds";
+          }
+        }
+      }
+      case sftp {
+        container sftp {
+          leaf address {
+            mandatory true;
+            type string;
+            description
+              "Remote server hostname or IP address";
+          }
+          leaf username {
+            mandatory true;
+            type string;
+            description
+              "SFTP username";
+          }
+          leaf password {
+            mandatory true;
+            type aes-cfb-128-encrypted-string;
+            description
+              "SFTP password";
+          }
+          leaf port {
+            mandatory false;
+            type uint16;
+            default "22";
+            description
+              "TCP port number";
+          }
+          leaf timeout {
+            mandatory false;
+            type uint32;
+            default "30";
+            units "seconds";
+            description
+              "Timeout, in seconds";
+          }
+        }
+      }
+      case ftp {
+        container ftp {
+          leaf address {
+            mandatory true;
+            type string;
+            description
+              "Remote server hostname or IP address";
+          }
+          leaf username {
+            mandatory false;
+            type string;
+            default "anonymous";
+            description
+              "FTP username";
+          }
+          leaf password {
+            mandatory false;
+            type aes-cfb-128-encrypted-string;
+            description
+              "FTP password";
+          }
+          leaf control-port {
+            mandatory false;
+            type uint16;
+            default "21";
+            description
+              "TCP control port number";
+          }
+          leaf data-port {
+            mandatory false;
+            type uint16;
+            default "20";
+            description
+              "TCP data port number";
+          }
+          leaf timeout {
+            mandatory false;
+            type uint32;
+            default "30";
+            units "seconds";
+            description
+              "Timeout, in seconds";
+          }
+        }
+      }
+      case http {
+        container http {
+          leaf address {
+            mandatory false;
+            type string;
+            description
+              "Remote server hostname or IP address";
+          }
+          leaf port {
+            mandatory false;
+            type uint16;
+            default "80";
+            description
+              "TCP data port number";
+          }
+          leaf timeout {
+            mandatory false;
+            type uint32;
+            default "30";
+            units "seconds";
+            description
+              "Timeout, in seconds";
+          }
+        }
+      }
+    }
+  }
+
+  list file-servers {
+    key "configuration-name";
+    leaf configuration-name {
+      type string;
+      description
+        "Name of this file server configuration";
+    }
+    uses file-server;
+  }
+
+  grouping external-file {
+    leaf filename {
+      mandatory true;
+      type string;
+      description
+        "Path and filename of remote file";
+    }
+    choice location {
+      mandatory true;
+      case manual-file-server {
+        container manual-file-server {
+          uses file-server;
+        }
+      }
+      case preconfigured-file-server {
+        container preconfigured-file-server {
+          leaf configuration_name {
+            mandatory true;
+            type leafref {
+              path "/mds-common:file-servers/mds-common:configuration-name";
+            }
+          }
+        }
+      }
+    }
+  }
+
+  grouping file-transfer-status {
+    leaf state {
+      type enumeration {
+        enum "inactive";
+        enum "preparing";
+        enum "transferring";
+        enum "processing";
+        enum "complete";
+        enum "failure";
+        enum "cancelling";
+        enum "cancelled";
+      }
+      default "inactive";
+      description
+        "Status of the file transfer task";
+    }
+    leaf detailed-message {
+      type string;
+      default "";
+      description
+        "Detailed description of the current status of the file transfer task";
+    }
+    leaf size {
+      type uint32;
+      default "0";
+      description
+        "Number of bytes in the file to transfer";
+    }
+    leaf bytes-transferred {
+      type uint32;
+      default "0";
+      description
+        "Number of bytes of the file transferred so far";
+    }
+    leaf percent-complete {
+      type uint32;
+      default "0";
+      description
+        "Percentage of the file transferred so far";
+    }
+  }
+
+  grouping file-size-limits {
+    leaf maximum-bytes {
+      type uint32;
+      default "0xFFFFFFFF";
+      description
+        "Maximum number of bytes in the file";
+    }
+    leaf minimum-bytes {
+      type uint32;
+      default "0";
+      description
+        "Maximum number of bytes in the file";
+    }
+  }
+
+  grouping address-spec {
+    container not {
+      presence "not";
+      description
+        "If present, this inverts the sense of the address-spec";
+    }
+    choice type {
+      mandatory true;
+      case address {
+        leaf address {
+          type inet:ipv4-prefix;
+          description
+            "address or network";
+        }
+      }
+      case address-range {
+        container address-range {
+          leaf from {
+            type inet:ip-address;
+            mandatory true;
+          }
+          leaf to {
+            type inet:ip-address;
+          }
+          description
+            "address range";
+        }
+      }
+    }
+  }
+
+  grouping port-spec {
+    container not {
+      presence "not";
+      description
+        "if present, this inverts the sense of the port-spec";
+    }
+    choice type {
+      mandatory true;
+      case services {
+        leaf-list services {
+          type service-type;
+        }
+      }
+      case port-range {
+        list port-range {
+          key "from";
+          leaf from {
+            type uint16;
+            mandatory true;
+          }
+          leaf to {
+            type uint16;
+          }
+        }
+      }
+    }
+  }
+
+  container product-features {
+    description
+      "Top level product features container";
+  }
+  leaf allow-beta-features {
+    type boolean;
+    default "false";
+    description
+      "Allow experimental features to be enabled";
+  }
+
+  typedef sub-state {
+    type enumeration {
+      enum "off";
+      enum "active";
+      enum "error";
+    }
+  }
+
+  container subscriptions {
+    config false;
+    leaf radio-state {
+      type sub-state;
+      default "off";
+      description
+        "The state of the radio";
+    }
+    leaf alarm-state {
+      type sub-state;
+      default "off";
+      description
+        "State if alarmed";
+    }
+    leaf wifi-state {
+      type sub-state;
+      default "off";
+      description
+        "The state of the wifi";
+    }
+  }
+
+  extension code-name {
+    argument name;
+    description
+      "Used to give another name to the enum or node name in generated
+       header files. This statement is typically used to avoid name
+       conflicts if there is a data node with the same name as the
+       enumeration, if there are multiple enumerations in different
+       types with the same name but different values, or if there are
+       multiple node names that are mapped to the same name in the
+       header file.";
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

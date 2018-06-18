@@ -1,0 +1,156 @@
+module mds-service-web {
+  namespace "com:gemds:services:web";
+  prefix web;
+
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+  import mds-certmgr {
+    prefix mdscert;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module is an iperf configuration file for a service.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-03-27 {
+    description
+      "Changed default behavior HTTP server to be disabled,
+       but redirect to HTTPS if it is enabled.";
+  }
+  revision 2014-06-18 {
+    description
+      "Updated grouping name.";
+  }
+  revision 2013-04-12 {
+    description
+      "Initial revision.";
+  }
+
+  grouping web-bind-ips {
+    leaf-list ipv4-bind-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv4/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv4 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv4 addresses.";
+    }
+    leaf-list ipv6-bind-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv6/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv6 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv6 addresses.";
+    }
+  }
+
+  typedef tls-version {
+    type enumeration {
+      enum "tlsv1" {
+        description
+          "TLS v1.0";
+      }
+      enum "tlsv1.1" {
+        description
+          "TLS v1.1";
+      }
+      enum "tlsv1.2" {
+        description
+          "TLS v1.2";
+      }
+    }
+    description
+      "TLS Versions";
+  }
+
+  augment "/serv:services" {
+    container web {
+      container http {
+        leaf enabled {
+          type boolean;
+          default "false";
+          description
+            "Whether or not to run the HTTP server. If HTTP is disabled, but HTTPS
+             is enabled, the server will still respond on the HTTP port, but will
+             redirect to the HTTPS port. If both HTTP and HTTPS are disabled, the
+             server will not respond on either port.";
+        }
+        leaf port {
+          type inet:port-number;
+          default "80";
+          description
+            "The port to listen to HTTP connections on.";
+        }
+        uses web-bind-ips;
+      }
+      container https {
+        leaf enabled {
+          type boolean;
+          default "true";
+          description
+            "Whether or not to run the HTTPS server";
+        }
+        leaf port {
+          type inet:port-number;
+          default "443";
+          description
+            "The port to listen to HTTPS connections on.";
+        }
+        leaf-list tls-versions {
+          type tls-version;
+          description
+            "A list of allowed TLS versions the HTTPS server can use.";
+        }
+        uses web-bind-ips;
+        leaf tls-certificate {
+          type string;
+          must "not(.) or ( current()/. = '' ) or (( current()/. != '' ) and (../tls-priv-key and ../tls-priv-key != ''))" {
+            error-message
+              "Both tls-certificate and tls-priv-key must be configured
+               when using custom https certificates.";
+          }
+          description
+            "The certificate to use for the HTTPS server.
+             If this leaf is empty or not present, a self-signed
+             certificate/key pair will be used.";
+        }
+        leaf tls-priv-key {
+          type string;
+          must "not(.) or ( current()/. = '' ) or (( current()/. != '' ) and (../tls-certificate and ../tls-certificate != ''))" {
+            error-message
+              "Both tls-certificate and tls-priv-key must be configured
+               when using custom https certificates.";
+          }
+          description
+            "The private key which matches the specified tls-certificate
+             If this leaf is empty or not present, a self-signed
+             certificate/key pair will be used.";
+        }
+      }
+    }
+  }
+}

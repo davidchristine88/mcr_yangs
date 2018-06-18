@@ -1,0 +1,479 @@
+module mds-if-cell-status {
+  namespace "com:gemds:mds-if-cell-status";
+  prefix mds_cell_status;
+
+  import mds-if-cell-common {
+    prefix mds_cell_common;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     cellular devices found in MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-10-11 {
+    description
+      "Added EZ1 (band 31) modem type.";
+  }
+  revision 2016-03-11 {
+    description
+      "Added additional LTE status parameters";
+  }
+  revision 2015-09-16 {
+    description
+      "Reordered sim-state enum";
+  }
+  revision 2015-08-03 {
+    description
+      "added unknown to sim-state";
+  }
+  revision 2015-07-23 {
+    description
+      "Added 4GP (band 26) modem type enumeration.
+       Also, added LTE RSRP, RSRQ, CDMA ECIO.";
+  }
+  revision 2015-01-28 {
+    description
+      "Added sprint modem type enumeration.";
+  }
+  revision 2014-11-25 {
+    description
+      "Added modem type enumerations.";
+  }
+  revision 2013-11-07 {
+    description
+      "Changed the naming of some enumerations.";
+  }
+  revision 2013-04-25 {
+    description
+      "Initial revision.";
+  }
+
+  typedef display-string {
+    type string {
+      length "0 .. 255";
+    }
+  }
+
+  typedef sim-slot-state {
+    type enumeration {
+      enum "not-inserted" {
+        value 0;
+      }
+      enum "inserted" {
+        value 1;
+      }
+    }
+    default "not-inserted";
+  }
+
+  grouping cell-status {
+    leaf imsi {
+      type display-string;
+      description
+        "International mobile subscriber identity";
+    }
+    leaf imei {
+      type display-string;
+      description
+        "International mobile equipment identity";
+    }
+    leaf iccid {
+      type display-string;
+      description
+        "Unique serial number of the SIM card";
+    }
+    leaf mdn {
+      type display-string;
+      description
+        "Mobile directory number";
+    }
+    leaf apn {
+      type display-string;
+      description
+        "Access Point Name";
+    }
+    leaf app-sw-version {
+      type display-string;
+      description
+        "Application software version";
+    }
+    leaf modem-sw-version {
+      type display-string;
+      description
+        "Modem software version";
+    }
+    leaf modem-package-version {
+      type display-string;
+      when
+        "../modem-type = 'E4x-lte-emea' or
+         ../modem-type = '4Gx-lte-na' or
+         ../modem-type = '4GP-lte-na' or
+         ../modem-type = '4Gy-lte-na-eu' or
+         ../modem-type = '4Gz-lte-apac'";
+      description
+        "Version of the package that was used to reprogram the modem";
+    }
+    leaf sim-state {
+      default "unknown";
+      type enumeration {
+        enum "not-inserted" {
+          value 0;
+        }
+        enum "locked" {
+          value 1;
+        }
+        enum "ready" {
+          value 2;
+        }
+        enum "failed" {
+          value 3;
+        }
+        enum "unknown" {
+          value 4;
+        }
+      }
+      description
+        "SIM state";
+    }
+    leaf active-sim-slot {
+      when
+        "../modem-type = '4Gy-lte-na-eu' or
+         ../modem-type = '4Gz-lte-apac'";
+      type mds_cell_common:sim-slot-type;
+      description
+        "The Active SIM slot.";
+    }
+    leaf sim-a-slot-state {
+      when
+        "../modem-type = '4Gy-lte-na-eu' or
+         ../modem-type = '4Gz-lte-apac'";
+      type sim-slot-state;
+      description
+        "State of SIM-A slot.";
+    }
+    leaf sim-b-slot-state {
+      when
+        "../modem-type = '4Gy-lte-na-eu' or
+         ../modem-type = '4Gz-lte-apac'";
+      type sim-slot-state;
+      description
+        "State of SIM-B slot.";
+    }
+    leaf modem-state {
+      default "unknown";
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "not-registered" {
+          value 1;
+        }
+        enum "searching" {
+          value 2;
+        }
+        enum "registration-denied" {
+          value 3;
+        }
+        enum "idle" {
+          value 4;
+        }
+        enum "connected" {
+          value 5;
+        }
+      }
+      description
+        "Device state of cellular modem";
+    }
+    leaf roaming-state {
+      default "unknown";
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "home" {
+          value 1;
+        }
+        enum "roaming" {
+          value 2;
+        }
+      }
+      description
+        "Roaming state of cellular modem";
+    }
+    leaf service-state {
+      default "unknown";
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "gprs" {
+          value 1;
+        }
+        enum "egprs" {
+          value 2;
+        }
+        enum "wcdma" {
+          value 3;
+        }
+        enum "hsdpa" {
+          value 4;
+        }
+        enum "hsupa" {
+          value 5;
+        }
+        enum "hspa-plus" {
+          value 6;
+        }
+        enum "is95a" {
+          value 7;
+        }
+        enum "is95b" {
+          value 8;
+        }
+        enum "1xrtt" {
+          value 9;
+        }
+        enum "evdo-rev0" {
+          value 10;
+        }
+        enum "evdo-reva" {
+          value 11;
+        }
+        enum "evdo-revb" {
+          value 12;
+        }
+        enum "evdo-ehrpd" {
+          value 13;
+        }
+        enum "lte" {
+          value 14;
+        }
+      }
+      description
+        "Service state of cellular modem";
+    }
+    leaf modem-type {
+      default "unknown";
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "EV4-lte-na-verizon" {
+          value 1;
+        }
+        enum "3G1-gsm-global" {
+          value 2;
+        }
+        enum "E4x-lte-emea" {
+          value 3;
+        }
+        enum "4Gx-lte-na" {
+          value 4;
+        }
+        enum "4GP-lte-na" {
+          value 5;
+        }
+        enum "EZ1-lte-emea" {
+          value 6;
+        }
+        enum "4Gy-lte-na-eu" {
+          value 7;
+        }
+        enum "4Gz-lte-apac" {
+          value 8;
+        }
+      }
+    }
+    leaf rssi {
+      type int8;
+      description
+        "Received signal strength indicator (dBm). Indicates total received power including
+         signal, interference and noise. A value of -125 or lower indicates no signal.";
+    }
+    leaf rsrp {
+      when "../service-state = 'lte'";
+      type int8;
+      description
+        "Received signal reference power (dBm). Indicates power of downlink LTE reference signals.
+         A value of -127 indicates this value is not available.";
+    }
+    leaf rsrq {
+      when "../service-state = 'lte'";
+      type int8;
+      description
+        "Received signal receive quality (dB). Indicates LTE signal quality.
+         A value of -127 indicates this value is not available.";
+    }
+    leaf snr {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      type int8;
+      description
+        "Received signal to noise ratio (dB). Indicates received signal quality.
+         A value of -127 indicates this value is not available.";
+    }
+    leaf ecio {
+      when
+        "not(../service-state = 'unknown' or ../service-state = 'lte' or
+             ../service-state = 'gprs' or ../service-state = 'egprs' or
+             ../modem-type = 'EV4-lte-na-verizon' or ../modem-type = '3G1-gsm-global')";
+      type int8;
+      description
+        "Ec/Io (dBm). Indicates received signal quality for CDMA/UMTS.
+         A value of -127 indicates this value is not available.";
+    }
+    leaf tac {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      type uint16;
+      description
+        "Tracking Area Code (0xFFFF = not available)";
+    }
+    leaf global-cell-id {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      type uint32;
+      description
+        "Global Cell ID (0xFFFFFFFF = not available)";
+    }
+    leaf physical-cell-id {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      type uint16;
+      description
+        "Physical Cell ID (Normal Range: 0-503, 0xFFFF = not available)";
+    }
+    leaf band {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      type uint8;
+      description
+        "LTE Band (0xFF = invalid)";
+    }
+    leaf bandwidth {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      default "unknown";
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "1.4MHZ" {
+          value 1;
+        }
+        enum "3MHZ" {
+          value 2;
+        }
+        enum "5MHZ" {
+          value 3;
+        }
+        enum "10MHZ" {
+          value 4;
+        }
+        enum "15MHZ" {
+          value 5;
+        }
+        enum "20MHZ" {
+          value 6;
+        }
+      }
+      units "Mhz";
+      description
+        "LTE Bandwidth";
+    }
+    leaf tx-chan {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      type uint16;
+      description
+        "TX channel (0xFFFF = not available)";
+    }
+    leaf rx-chan {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      type uint16;
+      description
+        "RX channel (0xFFFF = not available)";
+    }
+    leaf emm-state {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      default "unknown";
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "deregistered" {
+          value 1;
+        }
+        enum "reg-initiated" {
+          value 2;
+        }
+        enum "registered" {
+          value 3;
+        }
+        enum "tau-initiated" {
+          value 4;
+        }
+        enum "sr-initiated" {
+          value 5;
+        }
+        enum "dereg-initiated" {
+          value 6;
+        }
+        enum "invalid" {
+          value 7;
+        }
+      }
+      description
+        "EPS mobility management (EMM) state";
+    }
+    leaf rrc-state {
+      when "../service-state = 'lte' and not(../modem-type = 'EV4-lte-na-verizon')";
+      default "unknown";
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "idle" {
+          value 1;
+        }
+        enum "waiting" {
+          value 2;
+        }
+        enum "connected" {
+          value 3;
+        }
+        enum "releasing" {
+          value 4;
+        }
+      }
+      description
+        "Radio Resource Control (RRC) state";
+    }
+  }
+
+  grouping cell-fw-status {
+    list versions {
+      key "id";
+      leaf id {
+        type uint8;
+        description
+          "The identifier for this modem firmware.";
+      }
+      leaf version {
+        type display-string;
+        description
+          "The version of modem firmware stored at this location.";
+      }
+      leaf active {
+        type boolean;
+        description
+          "Indicates whether this is the currently running modem firmware.";
+      }
+    }
+  }
+}

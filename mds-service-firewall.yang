@@ -1,0 +1,998 @@
+module mds-service-firewall {
+  namespace "com:gemds:services:firewall";
+  prefix fire;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-security {
+    prefix sec;
+  }
+  import mds-common {
+    prefix mds;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring firewall service.
+     \t\t
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-10-11 {
+    description
+      "Added IPv6 filter and NAT64 support.";
+  }
+  revision 2016-09-27 {
+    description
+      "Added dst-port-range to destination nat rule match.";
+  }
+  revision 2016-04-15 {
+    description
+      "Added BGP protocol option.";
+  }
+  revision 2015-07-23 {
+    description
+      "Added GRE protocol option.";
+  }
+  revision 2015-05-15 {
+    description
+      "Added OSPF and RIP options.";
+  }
+  revision 2014-11-19 {
+    description
+      "Made static nat rule fields mandatory";
+  }
+  revision 2014-10-09 {
+    description
+      "Added allowed character set in description/help message.";
+  }
+  revision 2014-08-26 {
+    description
+      "Fixed spellings of icmp reject types";
+  }
+  revision 2014-07-24 {
+    description
+      "Fixed handling of SCTP protocol.";
+  }
+  revision 2014-07-01 {
+    description
+      "Added static NAT containor.";
+  }
+  revision 2014-06-18 {
+    description
+      "Added static (one-to-one) NAT.";
+  }
+  revision 2013-08-09 {
+    description
+      "Added 'not' directive to address-spec and port-spec.
+       Added address-set to address-spec.
+       Updated SNAT and DNAT match specification";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-09-25 {
+    description
+      "Initial revision.";
+  }
+
+  typedef protocol {
+    type enumeration {
+      enum "all";
+      enum "sctp";
+      enum "tcp";
+      enum "udp";
+      enum "icmp";
+      enum "esp";
+      enum "ospf";
+      enum "gre";
+      enum "icmpv6";
+    }
+    description
+      "protocol type";
+  }
+
+  typedef nat64-protocol {
+    type enumeration {
+      enum "tcp";
+      enum "udp";
+      enum "icmp";
+    }
+    description
+      "protocol type";
+  }
+
+  typedef icmp-type {
+    type enumeration {
+      enum "destination-unreachable";
+      enum "echo-request";
+      enum "echo-reply";
+      enum "address-mask-request";
+      enum "address-mask-reply";
+      enum "parameter-problem";
+      enum "redirect";
+      enum "router-advertisement";
+      enum "router-solicitation";
+      enum "source-quench";
+      enum "time-exceeded";
+      enum "timestamp-request";
+      enum "timestamp-reply";
+    }
+  }
+
+  typedef icmp-reject-type {
+    type enumeration {
+      enum "net-unreachable";
+      enum "host-unreachable";
+      enum "port-unreachable";
+      enum "proto-unreachable";
+      enum "net-prohibited";
+      enum "host-prohibited";
+      enum "admin-prohibited";
+    }
+  }
+
+  typedef icmpv6-type {
+    type enumeration {
+      enum "destination-unreachable";
+      enum "packet-too-big";
+      enum "time-exceeded";
+      enum "parameter-problem";
+      enum "echo-request";
+      enum "echo-reply";
+      enum "router solicitation";
+      enum "router-advertisement";
+      enum "neighbor-solicitation";
+      enum "neighbor-advertisement";
+      enum "redirect";
+    }
+  }
+
+  typedef icmpv6-reject-type {
+    type enumeration {
+      enum "icmp6-no-route";
+      enum "icmp6-adm-prohibited";
+      enum "icmp6-addr-unreachable";
+      enum "icmp6-port-unreachable";
+    }
+  }
+
+  typedef syslog-level {
+    type enumeration {
+      enum "emergency";
+      enum "alert";
+      enum "critical";
+      enum "error";
+      enum "warning";
+      enum "notice";
+      enum "info";
+      enum "debug";
+    }
+  }
+
+  grouping eth-type-spec {
+    container not {
+      presence "not";
+      description
+        "If present, this inverts the sense of the match";
+    }
+    choice type {
+      mandatory true;
+      case protocol {
+        leaf protocol {
+          type mds:ether-type;
+        }
+      }
+      case custom {
+        leaf custom {
+          type union {
+            type uint16;
+            type mds:hex-value {
+              length "6" {
+                description
+                  "hexUnsignedShort";
+                error-message
+                  "Two bytes must have exactly four hex characters
+                   after the 0x prefix";
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  grouping address-range {
+    leaf from {
+      type inet:ip-address;
+      mandatory true;
+    }
+    leaf to {
+      type inet:ip-address;
+    }
+  }
+
+  grouping mac-address-spec {
+    container not {
+      presence "not";
+      description
+        "If present, this inverts the match";
+    }
+    leaf address {
+      type yang:mac-address;
+      mandatory true;
+      description
+        "MAC address";
+    }
+    leaf mask {
+      type yang:mac-address;
+      description
+        "The mask for the MAC address";
+    }
+  }
+
+  grouping address-spec {
+    container not {
+      presence "not";
+      description
+        "If present, this inverts the sense of the address-spec";
+    }
+    choice type {
+      mandatory true;
+      case address {
+        leaf address {
+          type inet:ipv4-prefix;
+          description
+            "IPv4 address or network";
+        }
+      }
+      case address6 {
+        leaf address6 {
+          type inet:ipv6-prefix;
+          description
+            "IPv6 address or network";
+        }
+      }
+      case address-range {
+        container address-range {
+          uses address-range;
+          description
+            "IPv4 or IPv6 address range";
+        }
+      }
+      case address-set {
+        leaf address-set {
+          type leafref {
+            path "/serv:services/firewall/address-set/name";
+          }
+          description
+            "set of one or more IPv4 addresses/networks";
+        }
+        leaf add-interface-address {
+          type boolean;
+          default "false";
+          description
+            "Add the address of the interface to which this filter has
+             been applied to the address-set";
+        }
+      }
+      case address6-set {
+        leaf address6-set {
+          type leafref {
+            path "/serv:services/firewall/address6-set/name";
+          }
+          description
+            "set of one or more IPv6 addresses/networks";
+        }
+        leaf add-interface-address6 {
+          type boolean;
+          default "false";
+          description
+            "Add the address of the interface to which this filter has
+             been applied to the address6-set";
+        }
+      }
+    }
+  }
+
+  grouping port-range {
+    leaf from {
+      type uint16;
+      mandatory true;
+    }
+    leaf to {
+      type uint16;
+    }
+  }
+
+  typedef service {
+    type enumeration {
+      enum "bgp";
+      enum "dhcp";
+      enum "dhcpv6";
+      enum "dns";
+      enum "ftp";
+      enum "http";
+      enum "https";
+      enum "ike";
+      enum "netconf";
+      enum "ntp";
+      enum "rip";
+      enum "snmp";
+      enum "ssh";
+      enum "tftp";
+      enum "traceroute";
+    }
+  }
+
+  grouping port-spec {
+    container not {
+      presence "not";
+      description
+        "if present, this inverts the sense of the port-spec";
+    }
+    choice type {
+      mandatory true;
+      case services {
+        leaf-list services {
+          type service;
+        }
+      }
+      case port-range {
+        list port-range {
+          key "from";
+          uses port-range;
+        }
+      }
+    }
+  }
+
+  grouping v4-address-and-port {
+    leaf src-address {
+      type inet:ipv4-prefix;
+      description
+        "IPv4 network";
+    }
+    container src-ports {
+      presence "source port";
+      uses port-range;
+      description
+        "source port(s) specification";
+    }
+  }
+
+  grouping nat64-rule {
+    container src-pool {
+      uses v4-address-and-port;
+    }
+    leaf dst-prefix {
+      mandatory true;
+      type inet:ipv6-prefix;
+      description
+        "IPv6 address pool used for translating IPv4 addresses.
+         Prefix length must be 32, 40, 48, 56, 64, or 96.";
+    }
+    list static {
+      must "(../src-pool/src-address) and (../src-pool/src-ports)";
+      key "id";
+      leaf id {
+        type uint32;
+        description
+          "rule id";
+      }
+      leaf v6-address {
+        type inet:ipv6-address;
+        description
+          "Source IPv6 address to be masked to the destination IPv4
+           address below.";
+      }
+      leaf v6-port {
+        type inet:port-number;
+        description
+          "Source IPv6 port.";
+      }
+      leaf v4-address {
+        type inet:ipv4-address;
+        description
+          "Destination IPv4 address. Must fall within the dynamic source
+           IPv4 pool.";
+      }
+      leaf v4-port {
+        type inet:port-number;
+        description
+          "Destination IPv4 port.";
+      }
+      leaf-list protocols {
+        type nat64-protocol;
+      }
+    }
+  }
+
+  typedef rule-action {
+    type enumeration {
+      enum "accept" {
+        description
+          "accept the packet";
+      }
+      enum "drop" {
+        description
+          "drop the packet";
+      }
+      enum "reject" {
+        description
+          "drop packet and send error message";
+      }
+    }
+  }
+
+  typedef rule-eth-action {
+    type enumeration {
+      enum "accept" {
+        description
+          "accept the packet";
+      }
+      enum "drop" {
+        description
+          "drop the packet";
+      }
+    }
+  }
+
+  augment "/serv:services" {
+    container firewall {
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to run the firewall service";
+      }
+      container allowed-protocols {
+        leaf firewall-mode {
+          type enumeration {
+            enum "basic";
+            enum "advanced";
+          }
+          default "advanced";
+          description
+            "Enables the basic web firewall. If set to advanced, the firewall is only changed in advanced mode.";
+        }
+        leaf broadcast {
+          type rule-eth-action;
+          default "accept";
+          description
+            "Allow broadcast traffic";
+        }
+        leaf multicast {
+          type rule-eth-action;
+          default "accept";
+          description
+            "Allow multicast traffic";
+        }
+        leaf stp {
+          type rule-eth-action;
+          default "accept";
+          description
+            "Allow STP/RSTP traffic, will override broadcast/multicast setting for matching traffic";
+        }
+        leaf pvst {
+          type rule-eth-action;
+          default "drop";
+          description
+            "Allow PVST/PVST+ traffic, will override broadcast/multicast setting for matching traffic";
+        }
+        leaf arp {
+          type rule-eth-action;
+          default "accept";
+          description
+            "Allow ARP traffic, will override broadcast/multicast setting for matching traffic";
+        }
+        leaf cdp {
+          type rule-eth-action;
+          default "drop";
+          description
+            "Allow Cisco discovery protocol traffic, will override broadcast/multicast setting for matching traffic";
+        }
+        leaf ipv4 {
+          type rule-eth-action;
+          default "accept";
+          description
+            "Allow IPv4 traffic";
+        }
+        leaf ipv6 {
+          type rule-eth-action;
+          default "drop";
+          description
+            "Allow IPv6 traffic";
+        }
+        leaf dhcp {
+          type rule-eth-action;
+          default "drop";
+          description
+            "Allow DHCP traffic, will override broadcast/multicast setting for matching traffic";
+        }
+        leaf icmp {
+          type rule-eth-action;
+          default "accept";
+          description
+            "Allow ICMP traffic";
+        }
+        leaf dns {
+          type rule-eth-action;
+          default "drop";
+          description
+            "Allow DNS traffic";
+        }
+        leaf ntp {
+          type rule-eth-action;
+          default "drop";
+          description
+            "Allow DNS traffic";
+        }
+        description
+          "Sets the firewall with one of these values as a preset.";
+      }
+      list address-set {
+        key "name";
+        leaf name {
+          type sec:word-string {
+            length "1..20";
+          }
+          description
+            "ASCII string identifying the address-set (allowed chars: a-zA-Z0-9-_).";
+        }
+        leaf-list addresses {
+          type inet:ipv4-prefix;
+          description
+            "List of IPv4 addresses or networks";
+        }
+      }
+      list address6-set {
+        key "name";
+        leaf name {
+          type sec:word-string {
+            length "1..20";
+          }
+          description
+            "ASCII string identifying the address6-set (allowed chars: a-zA-Z0-9-_).";
+        }
+        leaf-list addresses6 {
+          type inet:ipv6-prefix;
+          description
+            "List of IPv6 addresses or networks";
+        }
+      }
+      list filter {
+        key "name";
+        leaf name {
+          type sec:word-string {
+            length "1..20";
+          }
+          description
+            "ASCII string identifying the filter (allowed chars: a-zA-Z0-9-_).";
+        }
+        list rule {
+          key "id";
+          leaf id {
+            type uint32;
+            description
+              "rule id";
+          }
+          container match {
+            leaf protocol {
+              type protocol;
+              default "all";
+            }
+            leaf icmp-type {
+              when "../protocol = 'icmp'";
+              type icmp-type;
+            }
+            leaf icmpv6-type {
+              when "../protocol = 'icmpv6'";
+              type icmpv6-type;
+            }
+            container src-address {
+              presence "source address";
+              uses address-spec;
+              description
+                "source address(es) specification";
+            }
+            container src-port {
+              presence "source port";
+              when "../protocol = 'tcp' or ../protocol='udp' or ../protocol='sctp'";
+              uses port-spec;
+              description
+                "source port(s) specification";
+            }
+            container dst-address {
+              presence "destination address";
+              uses address-spec;
+              description
+                "destination address(es) specification";
+            }
+            container dst-port {
+              presence "destination port";
+              when "../protocol = 'tcp' or ../protocol='udp' or ../protocol='sctp'";
+              uses port-spec;
+              description
+                "destination port(s) specification";
+            }
+            container ipsec {
+              presence "ipsec";
+              leaf direction {
+                mandatory true;
+                type enumeration {
+                  enum "in";
+                  enum "out";
+                }
+                description
+                  "whether this rule matches incoming or outgoing traffic
+                           inside ipsec tunnel";
+              }
+              leaf tunnel-src-address {
+                mandatory true;
+                type inet:ipv4-prefix;
+                description
+                  "tunnel endpoint source address";
+              }
+              leaf tunnel-dst-address {
+                mandatory true;
+                type inet:ipv4-prefix;
+                description
+                  "tunnel endpoint destination address";
+              }
+              description
+                "this allows one to match  traffic going into and coming
+                 out of the tunnel identified by tunnel source/destination
+                 addresses";
+            }
+            container pkt-type {
+              presence "packet type";
+              container not {
+                presence "not";
+                description
+                  "if present, this inverts the sense of the packet type";
+              }
+              leaf type {
+                mandatory true;
+                type enumeration {
+                  enum "unicast";
+                  enum "multicast";
+                  enum "broadcast";
+                }
+                description
+                  "The type of IP packet";
+              }
+            }
+          }
+          container actions {
+            presence "actions";
+            leaf action {
+              mandatory true;
+              type rule-action;
+              description
+                "action to perform on matching packets";
+            }
+            leaf reject-type {
+              when "../action = 'reject'";
+              type icmp-reject-type;
+              description
+                "type of icmp error message to be returned if action
+                 is reject";
+            }
+            leaf reject-type-v6 {
+              when "../action = 'reject'";
+              type icmpv6-reject-type;
+              description
+                "type of ICMPv6 error message to be returned if action
+                 is reject";
+            }
+            container log {
+              presence "log";
+              leaf level {
+                type syslog-level;
+                description
+                  "syslog level";
+              }
+              leaf prefix {
+                type sec:word-string {
+                  length "1..29";
+                }
+                description
+                  "prefix log messages with the specified prefix. This
+                   is useful for distinguishing messages in the logs
+                   (allowed chars: a-zA-Z0-9-_).";
+              }
+              description
+                "enables logging of packets matching the rule via syslog";
+            }
+          }
+        }
+        list rule-eth {
+          key "id";
+          leaf id {
+            type uint32;
+            description
+              "rule id";
+          }
+          container match {
+            container eth-type {
+              presence "layer 2 type";
+              uses eth-type-spec;
+              description
+                "The layer 2 type in the ethernet header";
+            }
+            container src-mac {
+              presence "sorce mac address";
+              uses mac-address-spec;
+              description
+                "Source MAC address specification";
+            }
+            container dst-mac {
+              presence "destination mac address";
+              uses mac-address-spec;
+              description
+                "Destination MAC address specification";
+            }
+          }
+          container actions {
+            presence "actions";
+            leaf action {
+              mandatory true;
+              type rule-eth-action;
+              description
+                "action to perform on matching packets";
+            }
+            container log {
+              presence "log";
+              leaf level {
+                type syslog-level;
+                description
+                  "syslog level";
+              }
+              leaf prefix {
+                type sec:word-string {
+                  length "1..29";
+                }
+                description
+                  "prefix log messages with the specified prefix. This
+                   is useful for distinguishing messages in the logs";
+              }
+              description
+                "enables logging of packets matching the rule via syslog";
+            }
+          }
+        }
+      }
+      container nat {
+        container source {
+          list rule-set {
+            key "name";
+            leaf name {
+              type sec:word-string {
+                length "1..20";
+              }
+              description
+                "ASCII string identifying the rule-set (allowed chars: a-zA-Z0-9-_).";
+            }
+            list rule {
+              key "id";
+              leaf id {
+                type uint32;
+                description
+                  "rule id";
+              }
+              container match {
+                container src-address {
+                  presence "source address";
+                  uses address-spec;
+                  description
+                    "source address(es) specification";
+                }
+                container dst-address {
+                  presence "destination address";
+                  uses address-spec;
+                  description
+                    "destination address(es) specification";
+                }
+              }
+              container source-nat {
+                choice to {
+                  mandatory true;
+                  case interface {
+                    container interface {
+                      presence "interface";
+                      description
+                        "translate source address to the address of
+                         the egress interface";
+                    }
+                  }
+                  case address {
+                    leaf address {
+                      type inet:ip-address;
+                      description
+                        "translate source address to this address";
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        container destination {
+          list rule-set {
+            key "name";
+            leaf name {
+              type sec:word-string {
+                length "1..20";
+              }
+              description
+                "ASCII string identifying the rule-set (allowed chars: a-zA-Z0-9-_).";
+            }
+            list rule {
+              key "id";
+              leaf id {
+                type uint32;
+                description
+                  "rule id";
+              }
+              container match {
+                leaf protocol {
+                  type protocol;
+                  default "all";
+                }
+                container src-address {
+                  presence "source address";
+                  uses address-spec;
+                  description
+                    "source address(es) specification";
+                }
+                container dst-address {
+                  presence "destination address";
+                  uses address-spec;
+                  description
+                    "destination address(es) specification";
+                }
+                leaf dst-port {
+                  when "../protocol = 'tcp' or ../protocol='udp' or ../protocol='sctp'";
+                  type inet:port-number;
+                  description
+                    "destination port";
+                }
+                container dst-port-range {
+                  presence "destination port range";
+                  when "../protocol = 'tcp' or ../protocol='udp' or ../protocol='sctp'";
+                  uses port-range;
+                  description
+                    "destination port range";
+                }
+              }
+              container destination-nat {
+                leaf address {
+                  type inet:ip-address;
+                  mandatory true;
+                  description
+                    "translate destination address to this address";
+                }
+                leaf port {
+                  when
+                    "../../match/protocol = 'tcp' or
+                     ../../match/protocol = 'udp' or
+                     ../../match/protocol = 'sctp'";
+                  type inet:port-number;
+                  description
+                    "translate destination port to this port";
+                }
+              }
+            }
+          }
+        }
+        container static {
+          list rule-set {
+            key "name";
+            leaf name {
+              type sec:word-string {
+                length "1..20";
+              }
+              description
+                "ASCII string identifying the rule-set (allowed chars: a-zA-Z0-9-_).";
+            }
+            list rule {
+              key "id";
+              leaf id {
+                type uint32;
+                description
+                  "rule id";
+              }
+              container match {
+                leaf dst-address {
+                  mandatory true;
+                  type inet:ipv4-prefix;
+                  description
+                    "destination address/network";
+                }
+              }
+              container static-nat {
+                leaf address {
+                  mandatory true;
+                  type inet:ipv4-prefix;
+                  description
+                    "translate destination address/network to this address/network and vice versa";
+                }
+              }
+            }
+          }
+        }
+        container nat64 {
+          presence "nat64";
+          uses nat64-rule;
+        }
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface" {
+    container filter {
+      leaf input {
+        type leafref {
+          path "/serv:services/firewall/filter/name";
+        }
+        must
+          "(count(/serv:services/firewall/filter[name = current()/.]/rule-eth) = 0) or
+           (../../if:type = 'mds_bridge:bridge') or
+           (../../if:type = 'mds_vlan:vlan')" {
+          error-message "Only bridges and VLANs can have layer 2 filter rules.";
+        }
+      }
+      leaf output {
+        type leafref {
+          path "/serv:services/firewall/filter/name";
+        }
+        must
+          "(count(/serv:services/firewall/filter[name = current()/.]/rule-eth) = 0) or
+           (../../if:type = 'mds_bridge:bridge') or
+           (../../if:type = 'mds_vlan:vlan')" {
+          error-message "Only bridges and VLANs can have layer 2 filter rules.";
+        }
+      }
+    }
+    container nat {
+      leaf source {
+        type leafref {
+          path "/serv:services/firewall/nat/source/rule-set/name";
+        }
+      }
+      leaf destination {
+        type leafref {
+          path "/serv:services/firewall/nat/destination/rule-set/name";
+        }
+      }
+      leaf static {
+        type leafref {
+          path "/serv:services/firewall/nat/static/rule-set/name";
+        }
+      }
+    }
+  }
+}

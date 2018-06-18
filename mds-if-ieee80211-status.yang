@@ -1,0 +1,156 @@
+module mds-if-ieee80211-status {
+  namespace "com:gemds:mds-if-wifi-status";
+  prefix mds_wifi_status;
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of common YANG definitions for
+     wi-fi devices found in MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2013-06-07 {
+    description
+      "Changed wifi-status from a string to an enum.";
+  }
+  revision 2013-06-07 {
+    description
+      "Renamed mac to bssid. Changed order of txpackets and txfailed";
+  }
+  revision 2013-04-25 {
+    description
+      "Initial revision.";
+  }
+
+  typedef display-string {
+    type string {
+      length "0 .. 255";
+    }
+  }
+
+  typedef ssid {
+    type string {
+      length "min .. 32";
+    }
+  }
+
+  grouping wifi-stats {
+    leaf rssi {
+      type int8;
+      units "dBm";
+    }
+    leaf authenticated {
+      type boolean;
+    }
+    leaf authorized {
+      type boolean;
+    }
+    leaf inactive {
+      type uint32;
+    }
+    leaf rxbytes {
+      type uint32;
+    }
+    leaf rxpackets {
+      type uint32;
+    }
+    leaf txbitrate {
+      type uint16;
+    }
+    leaf txbytes {
+      type uint32;
+    }
+    leaf txpackets {
+      type uint32;
+    }
+    leaf txfailed {
+      type uint32;
+    }
+    leaf txretries {
+      type uint32;
+    }
+  }
+
+  grouping wifi-status {
+    leaf serial-number {
+      type display-string;
+    }
+    leaf modem-type {
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "w51" {
+          value 1;
+        }
+        enum "w52" {
+          value 2;
+        }
+      }
+    }
+    leaf mode {
+      type enumeration {
+        enum "unknown" {
+          value 0;
+        }
+        enum "station" {
+          value 1;
+        }
+        enum "access-point" {
+          value 2;
+        }
+        enum "access-point-station" {
+          value 3;
+        }
+      }
+    }
+    leaf tx-power {
+      type uint8;
+    }
+    leaf channel {
+      type uint8;
+    }
+    container ap-status {
+      config false;
+      list ap {
+        key "ssid";
+        leaf ssid {
+          type ssid;
+          description
+            "Current BSS SSID/Network name";
+        }
+        list client {
+          key "mac";
+          leaf mac {
+            type string {
+              length "min .. 20";
+            }
+          }
+          uses wifi-stats;
+        }
+      }
+    }
+    container station-status {
+      leaf ssid {
+        type ssid;
+        description
+          "SSID of access point the unit is connected to";
+      }
+      leaf bssid {
+        type string {
+          length "min .. 20";
+        }
+      }
+      uses wifi-stats;
+    }
+  }
+}

@@ -1,0 +1,80 @@
+module mds-service-ssh {
+  namespace "com:gemds:services:ssh";
+  prefix ssh;
+
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module configures SSH settings.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2014-06-18 {
+    description
+      "Updated grouping name.";
+  }
+  revision 2013-04-12 {
+    description
+      "Initial revision.";
+  }
+
+  grouping ssh-bind-ips {
+    leaf-list ipv4-bind-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv4/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv4 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv4 addresses.";
+    }
+    leaf-list ipv6-bind-ips {
+      type leafref {
+        path "/if:interfaces/if:interface/ip:ipv6/ip:address/ip:ip";
+      }
+      description
+        "Restrict the server to only listen for connections
+         on the specified IPv6 addresses.  If this leaf is not present,
+         or empty, the server will listen on all IPv6 addresses.";
+    }
+  }
+
+  augment "/serv:services" {
+    container ssh {
+      leaf enabled {
+        type boolean;
+        default "true";
+        description
+          "Whether or not to run the SSH server";
+      }
+      leaf port {
+        type inet:port-number;
+        default "22";
+        description
+          "The port to listen to SSH connections on.";
+      }
+      uses ssh-bind-ips;
+    }
+  }
+}

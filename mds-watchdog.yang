@@ -1,0 +1,200 @@
+module mds-watchdog {
+  namespace "com:gemds:watchdog";
+  prefix wd;
+
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     device resource monitoring.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-09-24 {
+    description
+      "Change the defaults for slab memory usage.";
+  }
+  revision 2013-06-28 {
+    description
+      "Hide watchdog info under debug group. Added disabled enumeration value
+       to apllication status";
+  }
+  revision 2013-06-14 {
+    description
+      "Updates make more configurable.";
+  }
+  revision 2013-06-06 {
+    description
+      "Initial revision.";
+  }
+
+  typedef reboot-trigger-type {
+    type enumeration {
+      enum "critical-application-failed";
+      enum "slab-maximum-exceeded";
+    }
+  }
+
+  container watchdog-status {
+    config false;
+    description
+      "The status of the watchdog that is used to monitor system parameters.";
+    leaf slab {
+      description
+        "Current slab resource count.";
+      type uint32;
+    }
+    leaf slab-high-watermark {
+      description
+        "Highest observed slab resource count.";
+      type uint32;
+    }
+    list application-status {
+      key "name";
+      leaf name {
+        description
+          "The name of the polled application.";
+        type string;
+      }
+      leaf status {
+        description
+          "The status of the polled application.";
+        type enumeration {
+          enum "unknown";
+          enum "not-monitored";
+          enum "operational";
+          enum "non-responsive";
+          enum "non-operational";
+          enum "disabled";
+        }
+      }
+      leaf fail-count {
+        description
+          "Number of times an application failed report success.";
+        type uint32;
+      }
+      leaf age {
+        description
+          "Seconds since the application reported success.";
+        type uint32;
+      }
+      leaf message {
+        description
+          "The last message reported by the application.";
+        type string;
+      }
+    }
+  }
+  container watchdog {
+    config true;
+    description
+      "The configuration of the watchdog that is used to monitor system parameters.";
+    nacm:default-deny-all;
+    leaf enable {
+      description
+        "Enable or disable the entire watchdog subsystem.";
+      type boolean;
+      default "true";
+    }
+    container hardware-wdt {
+      leaf pretimeout-function {
+        description
+          "Enable or disable the entire the hardware watchdog pre-timeout function.";
+        type boolean;
+        default "false";
+      }
+    }
+    container resource-monitor {
+      description
+        "Settings for monitoring device resources.";
+      leaf period {
+        description
+          "Seconds between checks of resources.";
+        type uint32 {
+          range "10..max";
+        }
+        default "61";
+      }
+      leaf confd-size {
+        description
+          "Max size for confd";
+        type uint32 {
+          range "50000..max";
+        }
+        default "100000";
+      }
+      container slab {
+        description
+          "Configure monitoring of slab resource count.";
+        leaf maximum {
+          description
+            "The device should reboot if slab resource count 
+             is greater than this value.";
+          type uint32 {
+            range "10000..max";
+          }
+          default "400000";
+        }
+        leaf warning {
+          description
+            "An alarm is generated if slab resource count is
+             greater than this value.";
+          type uint32;
+          default "50000";
+        }
+      }
+    }
+    container polled-applications {
+      description
+        "Settings for monitoring device management applications.";
+      leaf period {
+        description
+          "Seconds between polls for application status.";
+        type uint32 {
+          range "60..max";
+        }
+        default "67";
+      }
+      list application {
+        key "name";
+        description
+          "List of applications that will be polled periodically for status";
+        leaf name {
+          mandatory true;
+          description
+            "The name of the application to poll";
+          type string;
+        }
+        leaf severity {
+          default "non-critical";
+          description
+            "How severe this applications operational status is.
+             Applications marked critical can trigger reboots if the application
+             becomes non-operational.";
+          type enumeration {
+            enum "non-critical";
+            enum "critical";
+          }
+        }
+      }
+    }
+    leaf-list reboot-triggers {
+      config true;
+      description
+        "Device reboots immediately when a trigger condition is met.";
+      type reboot-trigger-type;
+    }
+  }
+}

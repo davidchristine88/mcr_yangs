@@ -1,0 +1,104 @@
+module mds-factory-ln {
+  namespace "com:gemds:mds-factory-ln";
+  prefix mdsfactln;
+
+  import mds-factory {
+    prefix fact;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains factory-only level commands.
+     
+     Copyright (c) 2015 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-01-05 {
+    description
+      "Initial revision.";
+  }
+
+  typedef freq-str {
+    type string {
+      pattern "\\d{1,3}(\\.\\d{1,6})?";
+    }
+  }
+
+  typedef ln-mods {
+    type enumeration {
+      enum "qpsk" {
+        value 0;
+      }
+      enum "qam16" {
+        value 1;
+      }
+      enum "qam64" {
+        value 2;
+      }
+    }
+  }
+
+  typedef ln-fsk-type {
+    type enumeration {
+      enum "fsk3200";
+      enum "fsk9600";
+      enum "fsk9600m";
+      enum "fsk19200";
+      enum "fsk19200m";
+      enum "fsk19200n";
+      enum "fsk19200e";
+      enum "fsk38400n";
+    }
+  }
+
+  typedef ln-baud-type {
+    type enumeration {
+      enum "rate4800" {
+        value 0;
+      }
+      enum "rate9600" {
+        value 1;
+      }
+      enum "rate10000" {
+        value 2;
+      }
+      enum "rate16000" {
+        value 3;
+      }
+      enum "rate20000" {
+        value 4;
+      }
+      enum "rate40000" {
+        value 5;
+      }
+      enum "rate3000" {
+        value 6;
+      }
+    }
+  }
+
+  grouping ln-keys {
+    leaf mod {
+      description
+        "The modulation this rule is for";
+      type ln-mods;
+    }
+    leaf baud {
+      description
+        "The symbol rate this rule is for";
+      type ln-baud-type;
+    }
+  }
+
+  augment "/fact:factory" {
+    container ln;
+  }
+}

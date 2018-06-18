@@ -1,0 +1,75 @@
+module mds-procmgr {
+  namespace "com:gemds:mds-procmgr";
+  prefix procmgr;
+
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     process management.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2013-06-28 {
+    description
+      "Hide processes list under debug group.";
+  }
+  revision 2013-06-07 {
+    description
+      "Added dead_processes";
+  }
+  revision 2013-05-13 {
+    description
+      "Added nacm restrictions";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-05-14 {
+    description
+      "Initial revision.";
+  }
+
+  list processes {
+    nacm:default-deny-all;
+    key "job_id";
+    config false;
+    leaf job_id {
+      type int32;
+    }
+    leaf pid {
+      type int32;
+    }
+    leaf filename {
+      type string;
+    }
+    leaf args {
+      type string;
+    }
+    leaf env {
+      type string;
+    }
+    leaf cpu_time_sys {
+      type int64;
+    }
+    leaf cpu_time_user {
+      type int64;
+    }
+    leaf memory_usage {
+      type uint64;
+    }
+  }
+}

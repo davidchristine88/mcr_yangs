@@ -1,0 +1,608 @@
+module mds-interfaces {
+  namespace "com:gemds:mds-interfaces";
+  prefix mdsif;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+  import ietf-system {
+    prefix sys;
+  }
+  import mds-system {
+    prefix mdssys;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import mds-if-vlan {
+    prefix mds_vlan;
+  }
+  import mds-if-bridge {
+    prefix mds_bridge;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring network interfaces.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-03-10 {
+    description
+      "Added DHCPv6 PD request-prefix option.";
+  }
+  revision 2016-10-11 {
+    description
+      "Added IPv6 SLAAC and DHCPv6 support.";
+  }
+  revision 2015-11-04 {
+    description
+      "Add VRRP to ethernet, vlan and bridge interfaces.";
+  }
+  revision 2015-09-03 {
+    description
+      "Add port-authentication security to ethernet interfaces.";
+  }
+  revision 2015-02-11 {
+    description
+      "Add point-to-point-connection to dhcp container";
+  }
+  revision 2014-09-26 {
+    description
+      "Remove physical-interface and virtual-type leafs. Add option to not get DNS or routes form DHCP server.";
+  }
+  revision 2014-09-11 {
+    description
+      "Added Bond interface type";
+  }
+  revision 2014-08-26 {
+    description
+      "Added GRE and Loopback interface types";
+  }
+  revision 2013-11-07 {
+    description
+      "Added feature check for orbit-mcr";
+  }
+  revision 2013-10-22 {
+    description
+      "Move to standard IETF interfaces-state table.";
+  }
+  revision 2013-02-06 {
+    description
+      "- Added L2 MTU to /if:interfaces
+       - Removed statistics";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-02-10 {
+    description
+      "Initial revision.";
+  }
+
+  feature orbit-mcr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MCR family.";
+  }
+
+  feature orbit-mpr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MPR family.";
+  }
+
+  identity ethernet {
+    base if:interface-type;
+    description
+      "Ethernet port.";
+  }
+
+  grouping vrrp-settings {
+    leaf enabled {
+      type boolean;
+      default "true";
+      description
+        "Enable Virtual Router Redundancy Protocol (VRRP) on this interface.";
+    }
+    leaf address {
+      mandatory true;
+      type inet:ip-address;
+      description
+        "Virtual Router IP address.";
+    }
+    leaf subnet-mask {
+      mandatory true;
+      type inet:ip-address;
+      description
+        "Virtual Router IP subnet.";
+    }
+    leaf id {
+      mandatory true;
+      type uint8 {
+        range "1..255";
+      }
+      description
+        "Virtual Router Id";
+    }
+    leaf priority {
+      type uint8 {
+        range "1..254";
+      }
+      description
+        "Priority of this physical router in the VRRP group.";
+      default "100";
+    }
+    leaf advertisement-interval {
+      type uint8 {
+        range "1..60";
+      }
+      description
+        "Delay between advertisements.";
+      units "seconds";
+      default "1";
+    }
+    leaf preemption {
+      type boolean;
+      description
+        "Whether to enable higher priority routers to preempt lower priority routers.";
+      default "true";
+    }
+  }
+
+  grouping vrrp-status {
+    leaf vrrp {
+      config false;
+      type enumeration {
+        enum "disabled" {
+          description
+            "VRRP is disabled.";
+        }
+        enum "initializing" {
+          description
+            "VRRP is initializing.";
+        }
+        enum "master" {
+          description
+            "VRRP is acting as Master.";
+        }
+        enum "backup" {
+          description
+            "VRRP is acting as Backup.";
+        }
+      }
+      description
+        "Status of VRRP on this port.";
+    }
+  }
+
+  augment "/if:interfaces" {
+    list physical-interface {
+      nacm:default-deny-write;
+      key "name";
+      description
+        "This is the list of physical network interfaces currently
+         in the unit.
+         
+         This list is read-only.";
+      leaf name {
+        type string {
+          length "1..255";
+        }
+        description
+          "The user-facing name of this interface.";
+      }
+      leaf type {
+        type identityref {
+          base if:interface-type;
+        }
+        mandatory true;
+        description
+          "The type of interface.";
+      }
+      leaf system-name {
+        type string {
+          length "1..32";
+        }
+        mandatory true;
+        description
+          "The internal system name this physical interface
+           maps to.";
+      }
+      leaf bus-type {
+        type enumeration {
+          enum "mii";
+          enum "usb";
+          enum "pcie";
+        }
+        description
+          "The electrical interface/bus used by this interface";
+      }
+      leaf location {
+        type enumeration {
+          enum "built-in";
+          enum "slot1";
+          enum "slot2";
+          enum "slot3";
+          enum "slot4";
+          enum "slot5";
+        }
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface/ip:ipv4" {
+    container dhcp {
+      presence "DHCP configuration";
+      leaf client-identifier {
+        type string;
+        description
+          "The dhcp-client-identifier option sent to the server";
+      }
+      leaf request-hostname {
+        type boolean;
+        default "true";
+        description
+          "Request host name.";
+      }
+      leaf request-dns {
+        type boolean;
+        default "true";
+        description
+          "Request DNS search domains, domain names and servers";
+      }
+      leaf request-routers {
+        type boolean;
+        default "true";
+        description
+          "Request default router(s)";
+      }
+      leaf point-to-point-connection {
+        type boolean;
+        default "false";
+        description
+          "Handle address assigment for this interface as if
+           it is a point-to-point connection";
+      }
+      leaf retry-interval {
+        type uint16 {
+          range "30..300";
+        }
+        default "60";
+        description
+          "Time (secs) that must pass after the client has determined that
+           there is no DHCP server present before it tries again to
+           contact a DHCP server";
+      }
+      description
+        "configure the interface to obtain address and other settings via DHCPv4";
+    }
+  }
+  augment "/if:interfaces/if:interface/ip:ipv6" {
+    container dhcp {
+      presence "DHCP configuration";
+      description
+        "configure the interface to obtain address and other settings via DHCPv6";
+      leaf client-identifier {
+        type string;
+        description
+          "The dhcp-client-identifier option sent to the server";
+      }
+      leaf force-start {
+        type boolean;
+        default "false";
+        description
+          "Normally, DHCPv6 client is started if RA is received with 'managed' or
+           'other' flag set. Enable this parameter to start DHCPv6 client without
+           relying on receipt of RA.";
+      }
+      leaf request-info {
+        type boolean;
+        default "true";
+        description
+          "Perform an information only (other) request over DHCPv6.";
+      }
+      leaf request-normal-address {
+        type boolean;
+        default "true";
+        description
+          "Perform a normal (IA_NA) address query over DHCPv6.";
+      }
+      container prefix-delegation {
+        presence "prefix-delegation";
+        leaf request-prefix {
+          type inet:ipv6-prefix;
+          description
+            "Request this specific prefix.";
+        }
+        leaf request-prefix-exclude {
+          type boolean;
+          default "true";
+          description
+            "Request prefix-exclude option.";
+        }
+        list interface {
+          min-elements 1;
+          key "name";
+          leaf name {
+            type if:interface-ref;
+          }
+          leaf sub-prefix {
+            type inet:ipv6-address;
+            mandatory true;
+            description
+              "This sub-prefix is combined with the prefix received to
+               create the delegated prefix for the interface.";
+          }
+          leaf sub-prefix-len {
+            type uint8 {
+              range "1..64";
+            }
+            mandatory true;
+            description
+              "Length of the sub-prefix.";
+          }
+          description
+            "The interface to which the prefix is delegated.";
+        }
+      }
+      leaf retry-interval {
+        type uint16 {
+          range "30..300";
+        }
+        default "60";
+        description
+          "Time (secs) that must pass after the client has determined that
+           there is no DHCP server present before it tries again to
+           contact a DHCP server";
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface/ip:ipv6/ip:autoconf" {
+    leaf enabled {
+      type boolean;
+      default "true";
+      description
+        "Enable auto configuration via router discovery mechanisms.";
+    }
+    leaf router-solicitation-interval {
+      type uint32;
+      default "4";
+      description
+        "Number of seconds to wait between Router Solicitations.";
+    }
+    leaf add-default-route {
+      type boolean;
+      default "true";
+      description
+        "Add default route over this interface";
+    }
+    container prefix-delegation {
+      presence "prefix-delegation";
+      leaf interface {
+        type leafref {
+          path "/if:interfaces/if:interface/if:name";
+        }
+        mandatory true;
+        description
+          "The interface to which the the received /64 prefix is delegated.";
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mdsif:ethernet'";
+    container security {
+      presence "security";
+      leaf security-mode {
+        type enumeration {
+          enum "none" {
+            description
+              "No port-authentication.";
+          }
+          enum "EAP" {
+            description
+              "Act as a EAP authenticator, passing EAP
+               messages to a RADIUS server.";
+          }
+          enum "MAB" {
+            description
+              "Act as a MAB (MAC Authentication Bypass) authenticator,
+               sending CHAP messages to a RADIUS server for MAC addresses detected on the port.";
+          }
+        }
+        description
+          "The type of port-authentication to use.";
+      }
+      leaf radius-server {
+        type leafref {
+          path "/sys:system/mdssys:mds-radius/mdssys:servers/mdssys:name";
+        }
+        description
+          "The name of the RADIUS server configuration to use.";
+      }
+      description
+        "Port security settings.";
+      must
+        "security-mode = 'none' or (security-mode='EAP' and boolean(radius-server))
+         or (security-mode='MAB' and boolean(radius-server))" {
+        error-message "radius-server must be set when using EAP or MAB security-mode";
+      }
+    }
+    leaf eth-phy-rate {
+      type bits {
+        bit eth10MbHalf {
+          position 0;
+        }
+        bit eth10MbFull {
+          position 1;
+        }
+        bit eth100MbHalf {
+          position 2;
+        }
+        bit eth100MbFull {
+          position 3;
+        }
+      }
+      default "eth10MbHalf eth10MbFull eth100MbHalf eth100MbFull";
+      description
+        "Sets the data rate of the ethernet port.";
+    }
+    leaf ingress-rate-limiting {
+      type boolean;
+      default "false";
+      description
+        "Enable Ingress Rate Limiting on this interface.";
+    }
+    leaf ingress-rate {
+      type int32 {
+        range "64..100000";
+      }
+      units "kbps";
+      default "85000";
+      description
+        "Committed Information Rate (CIR) in kbps. Value for calculations is
+         rounded down to nearest 64 kbps when < 1000, 128 kpbs when < 10000,
+         and 1000 kbps when < 100000";
+    }
+    leaf ingress-burst {
+      type int32 {
+        range "64..5120";
+      }
+      units "kbits";
+      default "2048";
+      description
+        "Burst Allocation in kbits";
+    }
+  }
+  augment "/if:interfaces-state/if:interface" {
+    when "if:type = 'mdsif:ethernet'";
+    leaf eth-phy-status {
+      config false;
+      type enumeration {
+        enum "Not Connected";
+        enum "10 Mb, Half Duplex";
+        enum "10 Mb, Full Duplex";
+        enum "100 Mb, Half Duplex";
+        enum "100 Mb, Full Duplex";
+        enum "1 Gb, Half Duplex";
+        enum "1 Gb, Full Duplex";
+      }
+      description
+        "Shows the state of connected port";
+    }
+    leaf security {
+      config false;
+      type enumeration {
+        enum "disabled" {
+          description
+            "Security is disabled on this port and is unblocked.";
+        }
+        enum "authorized" {
+          description
+            "The port was granted access from the authenticator and is unblocked.";
+        }
+        enum "rejected" {
+          description
+            "The port was denied access from the authenticator and is blocked.";
+        }
+        enum "pending" {
+          description
+            "The port is waiting for messages from the authenticator and is blocked.";
+        }
+      }
+      description
+        "Status of port-based security.";
+    }
+  }
+  augment "/if:interfaces-state/if:interface" {
+    when "if:type = 'mdsif:ethernet'";
+  }
+  augment "/if:interfaces-state/if:interface/ip:ipv4/ip:neighbor" {
+    leaf state {
+      type enumeration {
+        enum "incomplete" {
+          description
+            "Address resolution is in progress and the link-layer
+             address of the neighbor has not yet been
+             determined.";
+        }
+        enum "reachable" {
+          description
+            "Roughly speaking, the neighbor is known to have been
+             reachable recently (within tens of seconds ago).";
+        }
+        enum "stale" {
+          description
+            "The neighbor is no longer known to be reachable but
+             until traffic is sent to the neighbor, no attempt
+             should be made to verify its reachability.";
+        }
+        enum "delay" {
+          description
+            "The neighbor is no longer known to be reachable, and
+             traffic has recently been sent to the neighbor.
+             Rather than probe the neighbor immediately, however,
+             delay sending probes for a short while in order to
+             give upper-layer protocols a chance to provide
+             reachability confirmation.";
+        }
+        enum "probe" {
+          description
+            "The neighbor is no longer known to be reachable, and
+             unicast Neighbor Solicitation probes are being sent
+             to verify reachability.";
+        }
+      }
+      description
+        "The Neighbor Unreachability Detection state of this
+         entry.";
+      reference
+        "RFC 4861: Neighbor Discovery for IP version 6 (IPv6)
+                   Section 7.3.2";
+    }
+  }
+  augment "/if:interfaces/if:interface" {
+    when
+      "if:type = 'mds_vlan:vlan'
+       or if:type = 'mds_bridge:bridge'
+       or if:type = 'mdsif:ethernet'";
+    container vrrp {
+      presence "vrrp";
+      description
+        "Virtual Router Redundancy Protocol (VRRP).";
+      uses vrrp-settings;
+      must
+        "not ((../if:type='mdsif:ethernet') and (./enabled = 'true')
+         and ( ../mds_vlan:vlan-mode != 'none'))" {
+        error-message "If VRRP is to be used with VLANs then it must be enabled on a VLAN interface, not an Ethernet interface.";
+      }
+      must "not((./enabled = 'true') and (/if:interfaces/if:interface[if:name = current()/../if:name] = (/if:interfaces/if:interface/mds_bridge:bridge-settings/mds_bridge:members/mds_bridge:port/mds_bridge:interface)))" {
+        error-message "If VRRP is to be used with a Bridge then it must be enabled on a Bridge interface, not an Ethernet interface.";
+      }
+    }
+  }
+  augment "/if:interfaces-state/if:interface" {
+    when
+      "if:type = 'mds_vlan:vlan'
+       or if:type = 'mds_bridge:bridge'
+       or if:type = 'mdsif:ethernet'";
+    uses vrrp-status;
+  }
+  augment "/if:interfaces-state/if:interface";
+}

@@ -1,0 +1,64 @@
+module mds-iperf-service {
+  namespace "com:gemds:mds-iperf-service";
+  prefix iperf;
+
+  import mds-services {
+    prefix serv;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module is an iperf configuration file for a service.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-06-20 {
+    description
+      "Added port and mode configuration.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-11-27 {
+    description
+      "Initial revision.";
+  }
+
+  augment "/serv:services" {
+    container iperf {
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to run the iperf service";
+      }
+      leaf port {
+        type uint16 {
+          range "1024..65535";
+        }
+        default "5001";
+        description
+          "The port the iperf server will listen for connections on.";
+      }
+      leaf mode {
+        type enumeration {
+          enum "tcp";
+          enum "udp";
+        }
+        default "tcp";
+        description
+          "The type of connection the iperf server will use.";
+      }
+    }
+  }
+}

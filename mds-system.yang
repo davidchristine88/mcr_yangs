@@ -1,0 +1,1132 @@
+module mds-system {
+  namespace "com:gemds:mds-system";
+  prefix mdssys;
+
+  import ietf-system {
+    prefix sys;
+  }
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+  import mds-common {
+    prefix mc;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import tailf-xsd-types {
+    prefix xs;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring system level components.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-07-03 {
+    description
+      "Added support for netmon based restart-trigger.";
+  }
+  revision 2017-05-25 {
+    description
+      "Added show-regulatory-limits action";
+  }
+  revision 2016-12-19 {
+    description
+      "Added alarm-contact-mode for MPR-based systems";
+  }
+  revision 2016-04-27 {
+    description
+      "Added system-restart RPC.";
+  }
+  revision 2016-04-15 {
+    description
+      "Added snapshot RPCs.";
+  }
+  revision 2016-01-12 {
+    description
+      "Added user snapshots capability.";
+  }
+  revision 2015-09-02 {
+    description
+      "Fixed some descriptions.";
+  }
+  revision 2015-07-23 {
+    description
+      "Added SNTP support.";
+  }
+  revision 2015-03-27 {
+    description
+      "Reformat reprograming actions, and encrypt passwords.";
+  }
+  revision 2015-02-11 {
+    description
+      "Reorganize geographical-location and add sync-with-gps-once.
+       Reorganize support package actions and add file size limitations.
+       Reorganize configuration-file actions and add file size limitations.";
+  }
+  revision 2014-10-13 {
+    description
+      "Remove restart-to-image action and add parameters to restart
+       action that implement the same functionality";
+  }
+  revision 2014-10-09 {
+    description
+      "Added validation handler to RADIUS shared-secret to enforce that
+       it not be empty";
+  }
+  revision 2014-09-25 {
+    description
+      "Added confirm text to snapshot rollback action";
+  }
+  revision 2014-09-11 {
+    description
+      "Added image location to reboot to for snapshot rollback action";
+  }
+  revision 2014-06-18 {
+    description
+      "User auth type is defaulted to radius-PAP in the code.";
+  }
+  revision 2014-05-20 {
+    description
+      "Added run-first-time-web-wizards leaf as a part of the new
+       startup wizard.";
+  }
+  revision 2014-04-17 {
+    description
+      "Added optional NAS address to the RADIUS server config.";
+  }
+  revision 2014-03-14 {
+    description
+      "Moved rollback action.";
+  }
+  revision 2013-09-23 {
+    description
+      "Added range statments to RADIUS timeout and attempts";
+  }
+  revision 2013-08-22 {
+    description
+      "Corrected spelling of 'transferred'";
+  }
+  revision 2013-07-30 {
+    description
+      "Added transfer-status";
+  }
+  revision 2013-07-12 {
+    description
+      "Renamed create-support-package RPC back to generate-support-package,
+       and added group-memberships to the authentication container.";
+  }
+  revision 2013-06-21 {
+    description
+      "Added temperature";
+  }
+  revision 2013-06-07 {
+    description
+      "Modified OTP handling to have function per OTP";
+  }
+  revision 2013-05-13 {
+    description
+      "Added nacm restrictions.  New baseline of feature changes.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-05-17 {
+    description
+      "Initial revision.";
+  }
+
+  feature orbit-mcr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MCR family.";
+  }
+
+  feature orbit-mpr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MPR family.";
+  }
+
+  identity radius-authentication-type {
+    description
+      "Base identity for RADIUS authentiation types.";
+  }
+
+  identity radius-PAP {
+    base radius-authentication-type;
+    description
+      "RADIUS messages will use the PAP authentication mechanism.";
+    reference
+      "RFC 2865: Remote Authentication Dial In User Service (RADIUS)
+       RFC 2869: RADIUS Extensions
+       RFC 5607: Remote Authentication Dial-In User Service (RADIUS)
+        Authorization for Network Access Server (NAS)
+        Management";
+  }
+
+  identity radius-CHAP {
+    base radius-authentication-type;
+    description
+      "RADIUS messages will use the CHAP authentication mechanism.";
+    reference
+      "RFC 2865: Remote Authentication Dial In User Service (RADIUS)
+       RFC 2869: RADIUS Extensions
+       RFC 5607: Remote Authentication Dial-In User Service (RADIUS)
+        Authorization for Network Access Server (NAS)
+        Management";
+  }
+
+  grouping otp-function-input {
+    leaf function {
+      description
+        "The function a one-time-password will perform.";
+      mandatory true;
+      type otp-function-type;
+    }
+  }
+
+  grouping otp-delete-input {
+    leaf identifier {
+      description
+        "The password to delete.";
+      mandatory true;
+      type leafref {
+        path "/sys:system/recovery/one-time-passwords/passwords/identifier";
+      }
+    }
+  }
+
+  grouping otp-create-input {
+    leaf function {
+      description
+        "The function to perform when the password is used.";
+      mandatory true;
+      type otp-function-type;
+    }
+  }
+
+  grouping otp-create-output {
+    leaf identifier {
+      description
+        "Password identifier.";
+      mandatory true;
+      type uint64;
+    }
+    leaf password {
+      mandatory true;
+      type string;
+      description
+        "A one-time-password used to recover the device.
+         This password is only displayed once, so it must be
+         recorded externally by the user.";
+    }
+  }
+
+  grouping verify-image-input {
+    leaf location {
+      mandatory true;
+      type uint8;
+      description
+        "The firmware location from the firmware versions list to verify";
+    }
+  }
+
+  grouping which-image-input {
+    choice which-image {
+      mandatory false;
+      default "active";
+      leaf version {
+        description
+          "Select the specified firmware version";
+        type leafref {
+          path "/sys:system/mdssys:firmware/mdssys:versions/mdssys:version";
+        }
+      }
+      leaf image {
+        description
+          "Select the specified firmware location";
+        type leafref {
+          path "/sys:system/mdssys:firmware/mdssys:versions/mdssys:location";
+        }
+      }
+      container active {
+        description
+          "Select the current active firmware";
+        presence "active";
+      }
+      container inactive {
+        description
+          "Select the inactive firmware";
+        presence "inactive";
+      }
+    }
+  }
+
+  grouping change-password-input {
+    leaf user {
+      mandatory true;
+      type enumeration {
+        enum "admin";
+        enum "tech";
+        enum "oper";
+      }
+      description
+        "The username whose password is being changed.";
+    }
+    leaf password {
+      mandatory true;
+      type string;
+      description
+        "The new clear-text password.";
+    }
+  }
+
+  grouping geographic-coordinates {
+    leaf latitude {
+      type decimal64 {
+        fraction-digits 16;
+        range "-90 .. 90";
+      }
+      description
+        "The latitude of the system expressed in degrees.
+         Positive numbers indicate locations north of the
+         equator.";
+    }
+    leaf longitude {
+      type decimal64 {
+        fraction-digits 16;
+        range "-180 .. 180";
+      }
+      description
+        "The longitude of the system expressed in degrees.
+         Positive numbers indicate locations east of the
+         prime meridian.";
+    }
+    leaf altitude {
+      type decimal64 {
+        fraction-digits 15;
+      }
+      description
+        "The altitude of the system expressed in meters.";
+    }
+  }
+
+  grouping cfg-export-input {
+    uses mc:external-file;
+  }
+
+  grouping cfg-import-input {
+    uses mc:external-file;
+  }
+
+  typedef otp-function-type {
+    type enumeration {
+      enum "login";
+      enum "factory-reset";
+    }
+  }
+
+  grouping create-user-snapshot-input {
+    leaf identifier {
+      mandatory true;
+      type string {
+        length "1..30";
+        pattern "[a-zA-Z0-9_][a-zA-Z0-9\\-_. ]*";
+      }
+      description
+        "The name of this user snapshot. Up to 30 characters, including letters, numbers, dashes, underscores, and spaces.";
+    }
+    leaf description {
+      type string {
+        length "1..127";
+        pattern "[a-zA-Z0-9_][a-zA-Z0-9\\-_. ]*";
+      }
+      default "User-created snapshot";
+      description
+        "Description of this user snapshot. Up to 127 characters, including letters, numbers, dashes, underscores, and spaces.";
+    }
+    leaf default {
+      default "false";
+      type boolean;
+      description
+        "Specifies the default user snapshot used in error recovery.";
+    }
+  }
+
+  grouping delete-user-snapshot-input {
+    leaf identifier {
+      mandatory true;
+      type leafref {
+        path "/sys:system/recovery/snapshots/identifier";
+      }
+    }
+  }
+
+  augment "/sys:system" {
+    leaf serial-number-chassis {
+      if-feature orbit-mpr;
+      config false;
+      type uint32;
+      description
+        "The serial number of the chassis. Note, not all hardware has support
+         for reading this value.";
+    }
+    leaf serial-number-core {
+      config false;
+      type uint32;
+      description
+        "The serial number of this system's core board.";
+    }
+    leaf serial-number-platform {
+      config false;
+      type uint32;
+      description
+        "The serial number of this system's platform board.";
+    }
+    leaf product-configuration {
+      config false;
+      type string;
+      description
+        "The string identifying this system's build configuration.";
+    }
+    leaf guid {
+      config false;
+      type string;
+      description
+        "The Globally Unique ID of the unit.";
+    }
+    leaf pre-login-banner {
+      type string {
+        length "0..2000";
+      }
+      description
+        "The contents of this leaf will be displayed to the user before they
+         are allowed to log in to the system.";
+    }
+    container resources {
+      config false;
+      description
+        "Resource usage.";
+      container disk-usage {
+        description
+          "Disk resources.";
+        leaf slash-tmp-available {
+          type uint32;
+          default "0";
+          description
+            "The number of available bytes in the /tmp file system.";
+        }
+      }
+    }
+    container authentication {
+      nacm:default-deny-write;
+      description
+        "The authentication configuration subtree.";
+      leaf group-memberships {
+        config false;
+        type string;
+        description
+          "A list of groups the current user is a member of.";
+      }
+      leaf disable-non-admin-users {
+        type boolean;
+        description
+          "If set to true, non-admin user accounts (oper/tech) will be disabled.
+           By default oper & tech may not log in if the password has never been
+           set by an admin user. This configuration option allows for the disabling
+           of these accounts after the password has been changed.";
+      }
+      leaf max-login-attempts {
+        type uint32 {
+          range "1..max";
+        }
+        default "4";
+        description
+          "The maximum number of failed login attempts before locking out future
+           attempts.";
+      }
+      leaf failed-login-lockout-time {
+        type uint32 {
+          range "1..max";
+        }
+        units "seconds";
+        default "300";
+        description
+          "The number of seconds to reject further login attempts from a host who
+           has failed to login 'max-login-attempts' number of times.";
+      }
+      leaf-list user-authentication-order {
+        type identityref {
+          base sys:authentication-method;
+        }
+        must "(. = \"sys:radius\" and /sys:system/mds-radius/servers) or(. != \"sys:radius\")" {
+          error-message "When 'radius' is used, a radius server must be configured.";
+        }
+        ordered-by user;
+        description
+          "When the device authenticates a user with
+           a password, it tries the authentication methods in this
+           leaf-list in order.  If authentication with one method
+           fails, the next method is used.  If no method succeeds,
+           the user is denied access.";
+      }
+      container password-options {
+        leaf minimum-length {
+          type uint16;
+          default "8";
+          description
+            "The minimum number of characters that must be in a password.";
+        }
+        leaf minimum-lower-case-letters {
+          type uint16;
+          default "1";
+          description
+            "The minimum number of lower-case letters ([a-z]) that must be in a password.";
+        }
+        leaf minimum-capital-letters {
+          type uint16;
+          default "1";
+          description
+            "The minimum number of capital letters ([A-Z]) that must be in a password.";
+        }
+        leaf minimum-numeric {
+          type uint16;
+          default "1";
+          description
+            "The minimum number of numeric characters ([0-9]) that must be in a password.";
+        }
+        leaf minimum-non-alpha-numeric {
+          type uint16;
+          default "0";
+          description
+            "The minimum number of non alpha-numeric characters that must be in a password.
+             Non alpha-numeric characters are defined as any character that does not match
+             the pattern [a-zA-Z0-9].";
+        }
+      }
+    }
+    container mds-radius {
+      description
+        "Radius Configuration";
+      list servers {
+        key "name";
+        ordered-by user;
+        description
+          "List of RADIUS servers used by the device.";
+        leaf name {
+          type string;
+          description
+            "Name given to this server configuration";
+        }
+        leaf address {
+          type inet:host;
+          mandatory true;
+          description
+            "The address of the RADIUS server.";
+        }
+        leaf authentication-port {
+          type inet:port-number;
+          default "1812";
+          description
+            "The port number of the RADIUS server.";
+        }
+        leaf shared-secret {
+          type aes-cfb-128-encrypted-string;
+          mandatory true;
+          description
+            "The shared secret which is known to both the RADIUS
+             client and server.";
+          reference "RFC 2865: Remote Authentication Dial In User Service";
+        }
+        leaf user-authentication-type {
+          type identityref {
+            base radius-authentication-type;
+          }
+          description
+            "The authentication type used by the RADIUS server.";
+        }
+        leaf nas-address {
+          type inet:host;
+          description
+            "The address provided in the NAS address attribute of
+             the RADIUS request. This should be the address of the
+             interface that is making the request. If it is not provided
+             the system will determine the address automatically";
+        }
+      }
+      container options {
+        description
+          "RADIUS client options.";
+        leaf timeout {
+          type uint8 {
+            range "1..max";
+          }
+          units "seconds";
+          default "5";
+          description
+            "The number of seconds the device will wait for a
+             response from a RADIUS server before trying with a
+             different server.";
+        }
+        leaf attempts {
+          type uint8 {
+            range "1..max";
+          }
+          default "2";
+          description
+            "The number of times the device will send a query to
+             the RADIUS servers before giving up.";
+        }
+      }
+    }
+    container firmware {
+      description
+        "Firmware group configuration.";
+      list versions {
+        config false;
+        key "location";
+        leaf location {
+          type uint8;
+          description
+            "A unique storage location for this firmware";
+        }
+        leaf version {
+          type string;
+          description
+            "The version of firmware stored in this location";
+        }
+        leaf active {
+          type boolean;
+          description
+            "This value is true for the firmware image from which the system
+             last boot";
+        }
+        list signatures {
+          config false;
+          key "certificate-signing-index";
+          leaf certificate-signing-index {
+            type uint8;
+            description
+              "The index of this certificate in the list of certificates used to sign the package";
+          }
+          leaf certificate-sha256 {
+            type string;
+            default "";
+            description
+              "sha256 of the certificate, in DER format, used to sign the package";
+          }
+        }
+      }
+      container reprogram-status {
+        config false;
+        description
+          "The current status of a reprogramming task.";
+        uses mc:file-transfer-status;
+      }
+      container reprogram-file-limits {
+        config false;
+        description
+          "The file size limits for a host firmware image.";
+        uses mc:file-size-limits;
+      }
+      container verify-image-status {
+        config false;
+        description
+          "The current status of a verify host firmware image task.";
+        uses mc:file-transfer-status;
+      }
+      container copy-image-status {
+        config false;
+        description
+          "The current status of a copy host firmware image task.";
+        uses mc:file-transfer-status;
+      }
+    }
+    container geographical-location {
+      uses geographic-coordinates;
+    }
+    container support-package {
+      container generate-status {
+        config false;
+        description
+          "The current status of generating the support package.";
+        uses mc:file-transfer-status;
+      }
+      container generate-file-limits {
+        config false;
+        description
+          "The file size limits for a generated support package.";
+        uses mc:file-size-limits;
+      }
+    }
+    container power {
+      container restart-trigger {
+        leaf delay {
+          type uint32;
+          default "300";
+          units "seconds";
+          description
+            "Delay before restarting the system after receiving the trigger.";
+        }
+      }
+    }
+    container configuration-files {
+      description
+        "Manage device configuration with external files.";
+      container export-status {
+        config false;
+        description
+          "The current status of exporting the device configuration.";
+        uses mc:file-transfer-status;
+      }
+      container export-file-limits {
+        config false;
+        description
+          "The file size limits for an exported device configuration file.";
+        uses mc:file-size-limits;
+      }
+      container import-status {
+        config false;
+        description
+          "The current status of importing the device configuration.";
+        uses mc:file-transfer-status;
+      }
+      container import-file-limits {
+        config false;
+        description
+          "The file size limits for an imported device configuration file.";
+        uses mc:file-size-limits;
+      }
+    }
+    container recovery {
+      description
+        "Mechanisms for device recovery.";
+      list snapshots {
+        description
+          "Snapshots for device configuration rollbacks.";
+        config false;
+        key "identifier";
+        leaf identifier {
+          type string;
+          description
+            "Snapshot identifier.";
+        }
+        leaf description {
+          type string;
+          description
+            "Optional user description for this snapshot.";
+        }
+        leaf date {
+          type string;
+          description
+            "The date when the snapshot was taken.";
+        }
+        leaf version {
+          type string;
+          description
+            "The version of the package filesystem used to create this snapshot.";
+        }
+        leaf hash {
+          type string;
+          description
+            "A unique hash of the snapshot.";
+        }
+        leaf user-default {
+          type boolean;
+          description
+            "Specifies the default user snapshot for error recovery.";
+        }
+      }
+      container user-snapshots {
+        description
+          "Manage user-created snapshots that can be used for device recovery.";
+      }
+      container one-time-passwords {
+        description
+          "One-time-passwords used for device recovery.";
+        list passwords {
+          description
+            "Current one-time-passwords.";
+          config false;
+
+          typedef status_type {
+            type enumeration {
+              enum "usable";
+              enum "revoked";
+            }
+          }
+          leaf identifier {
+            type uint64;
+            description
+              "Password identifier.";
+          }
+          leaf function {
+            type otp-function-type;
+            description
+              "The function the password will perform.";
+          }
+          leaf status {
+            type status_type;
+            description
+              "The status of the password's usability.";
+          }
+          leaf date-created {
+            type string;
+            description
+              "The date when the password was created.";
+          }
+          leaf date-revoked {
+            type string;
+            description
+              "The date when the password was used or revoked.";
+          }
+          leaf user {
+            type string;
+            description
+              "The user who used the password.";
+          }
+        }
+      }
+    }
+    leaf run-first-time-web-wizards {
+      type boolean;
+      default "true";
+      description
+        "If this is set to true, any first time wizards will
+         run on initial web login.";
+    }
+    leaf simple-web-mode {
+      type boolean;
+      default "true";
+      description
+        "If this is set to true, we will load the simple web mode.";
+    }
+    leaf simple-web-ready {
+      type boolean;
+      config false;
+      default "true";
+      description
+        "Returns true if there is no relevent configuration that is not displayed by simple web.";
+    }
+  }
+  augment "/sys:system" {
+    container uptime {
+      config false;
+      leaf seconds {
+        description
+          "How long the system has been running since boot up, represented in seconds.";
+        type uint32;
+      }
+      leaf text {
+        description
+          "How long the system has been running since boot up, expanded into readable text.";
+        type string;
+      }
+    }
+  }
+  augment "/sys:system/sys:clock" {
+    container set;
+    leaf sync-with-gps-once {
+      type boolean;
+      default "true";
+      description
+        "If enabled, the system time is sync'd once with time received from
+         GPS (if available and enabled in the system) after boot up.";
+    }
+    leaf current-date-and-time {
+      type string;
+      config false;
+      description
+        "The current system date and time, with local timezone.";
+    }
+    leaf device-boot-date {
+      type string;
+      config false;
+      description
+        "The system date and time when the NETCONF
+         server last restarted, with local timezone.";
+    }
+  }
+  augment "/sys:system/sys:ntp" {
+    leaf mode {
+      type enumeration {
+        enum "ntp";
+        enum "sntp";
+      }
+      default "ntp";
+      description
+        "The time synchronization protocol to use.
+         When this value is set to sntp, all preferences in the server
+         table other than 'enabled' will be ignored.";
+    }
+  }
+  augment "/sys:system" {
+    leaf temperature {
+      if-feature orbit-mcr;
+      config false;
+      type int32;
+      units "Celsius";
+      description
+        "The current platform board temperature in degrees Celsius.";
+    }
+    leaf power-supply-voltage {
+      if-feature orbit-mcr;
+      config false;
+      type string;
+      units "VDC";
+      description
+        "The current voltage output of power supply in VDC.";
+    }
+    leaf cpu-temperature {
+      config false;
+      type xs:double;
+      units "Celsius";
+      description
+        "The current cpu temperature in degrees Celsius.";
+    }
+    leaf chassis-temperature {
+      if-feature orbit-mpr;
+      config false;
+      type int32;
+      units "Celsius";
+      description
+        "The current chassis temperature in degrees Celsius.";
+    }
+    leaf heatsink-temperature-1 {
+      if-feature orbit-mpr;
+      config false;
+      type int32;
+      units "Celsius";
+      description
+        "The current heatsink #1 temperature in degrees Celsius.";
+    }
+    leaf heatsink-temperature-2 {
+      if-feature orbit-mpr;
+      config false;
+      type int32;
+      units "Celsius";
+      description
+        "The current heatsink #2 temperature in degrees Celsius.";
+    }
+    leaf power-supply-voltage-1 {
+      if-feature orbit-mpr;
+      config false;
+      type string;
+      units "VDC";
+      description
+        "The current voltage output of power supply #1 in VDC.";
+    }
+    leaf power-supply-voltage-2 {
+      if-feature orbit-mpr;
+      config false;
+      type string;
+      units "VDC";
+      description
+        "The current voltage output of power supply #2 in VDC.";
+    }
+    container redundancy {
+      if-feature orbit-mpr;
+      description
+        "Master station NIC hardware redundancy.";
+      leaf standby-equipped {
+        type boolean;
+        description
+          "When set to true, the system will alarm if only one NIC or one
+           power supply is detected.";
+      }
+      leaf alarm-contact-mode {
+        type enumeration {
+          enum "normally-open";
+          enum "normally-closed";
+        }
+        default "normally-open";
+        description
+          "Change the behavior of the alarm contacts on the alarm / relay module
+           to be either normally-open or normally-closed.";
+      }
+      leaf relay-switch-position {
+        config false;
+        type string;
+        description
+          "The current state of the manual override switch on the relay card.";
+      }
+      container scheduled-failover {
+        leaf enabled {
+          type boolean;
+          default "false";
+          description
+            "Enabling the scheduled failover will force the system to swap the
+             currently active radio module on a user-defined schedule.";
+        }
+        leaf period {
+          type uint16;
+          units "minutes";
+          default "1440";
+          description
+            "The number of minutes between each scheduled radio fail-over.
+             The default is 1440 (24 hours)";
+        }
+      }
+    }
+    container regulatory {
+      description
+        "System-wide regulatory specific settings";
+    }
+  }
+  augment "/sys:system" {
+    container status-change-count;
+  }
+  rpc system-force-failover {
+    description
+      "Forces a failover from the active NIC to the inactive NIC.";
+  }
+  rpc reprogram-inactive-image {
+    description
+      "Download a host firmware package and reprogram the inactive
+       image location with it.";
+    input {
+      uses mc:external-file;
+    }
+  }
+  rpc cancel-reprogram-inactive-image {
+    description
+      "Cancels a host firmware reprogramming task, if one is active";
+  }
+  rpc verify-image {
+    description
+      "Verify the integrity of the firmware image specified";
+    input {
+      uses verify-image-input;
+    }
+  }
+  rpc copy-image {
+    description
+      "Copy the active firmware to the inactive region.";
+  }
+  rpc change-password {
+    description
+      "Change a local user's password.  Note, this does not change the
+       password of users which are managed via an external authentication
+       service such as RADIUS.";
+    input {
+      uses change-password-input;
+    }
+  }
+  rpc generate-support {
+    description
+      "Generates a support package.";
+    input {
+      uses mc:external-file;
+    }
+  }
+  rpc cancel-generate-support {
+    description
+      "Cancel a support package generation.";
+  }
+  rpc otp-create {
+    input {
+      uses otp-create-input;
+    }
+    output {
+      uses otp-create-output;
+    }
+  }
+  rpc otp-delete {
+    input {
+      uses otp-delete-input;
+    }
+  }
+  rpc export-config {
+    description
+      "Export the device configuration.";
+    input {
+      uses cfg-export-input;
+    }
+  }
+  rpc cancel-export-config {
+    description
+      "Cancel a device configuration export.";
+  }
+  rpc import-config {
+    description
+      "Import the device configuration.";
+    input {
+      uses cfg-import-input;
+    }
+  }
+  rpc cancel-import-config {
+    description
+      "Cancel a device configuration import.";
+  }
+  rpc snapshot-create {
+    description
+      "Create a new user snapshot.";
+    input {
+      uses create-user-snapshot-input;
+    }
+  }
+  rpc snapshot-delete {
+    description
+      "Delete a user snapshot.";
+    input {
+      uses delete-user-snapshot-input;
+    }
+  }
+  rpc snapshot-set-default {
+    description
+      "Specify the default user snapshot for error recovery.";
+    input {
+      uses delete-user-snapshot-input;
+    }
+  }
+  rpc snapshot-rollback {
+    description
+      "Rollback the entire system configuration to a previous snapshot.";
+    input {
+      leaf snapshot {
+        mandatory true;
+        type leafref {
+          path "/sys:system/recovery/snapshots/identifier";
+        }
+        description
+          "The snapshot to rollback to.";
+      }
+      container which-image {
+        uses which-image-input;
+      }
+    }
+  }
+  rpc system-restart {
+    description
+      "Request that the entire system be restarted immediately.
+       The system will boot using the firmware image specified";
+    input {
+      uses which-image-input;
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

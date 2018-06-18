@@ -1,0 +1,74 @@
+module mds-event {
+  namespace "com:gemds:mds-event";
+  prefix mdsevent;
+
+  import cee {
+    prefix cee;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a the YANG definitions for MDS v1.0 profile events
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-09-05 {
+    description
+      "Initial revision.";
+  }
+
+  grouping settings-change-object {
+    leaf database {
+      type string;
+    }
+    leaf path {
+      type string;
+    }
+    leaf op {
+      type string;
+    }
+    leaf value {
+      type string;
+    }
+  }
+
+  grouping mds-event-object {
+    uses cee:cee-event-object;
+    container settings-change {
+      uses settings-change-object;
+    }
+    leaf event-name {
+      mandatory true;
+      type string;
+    }
+    leaf interface-name {
+      type string;
+    }
+    leaf image-num-src {
+      type uint32;
+    }
+    leaf image-num-dst {
+      type uint32;
+    }
+    leaf timeout {
+      type int32;
+    }
+  }
+
+  notification mds-event {
+    uses mds-event-object;
+  }
+}

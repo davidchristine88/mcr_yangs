@@ -1,0 +1,591 @@
+module mds-if-cell {
+  namespace "com:gemds:mds-if-cell";
+  prefix mds_cell;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import ietf-system {
+    prefix sys;
+  }
+  import mds-interfaces {
+    prefix mdsif;
+  }
+  import mds-common {
+    prefix mdsc;
+  }
+  import mds-if-cell-common {
+    prefix mds_cell_common;
+  }
+  import mds-if-cell-status {
+    prefix mds_cell_status;
+  }
+  import mds-system {
+    prefix mdssys;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     cellular devices found in MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-01-18 {
+    description
+      "Added NETCONF RPCs for modem reprogramming.";
+  }
+  revision 2016-07-25 {
+    description
+      "Added clear-apn parameter.";
+  }
+  revision 2015-03-27 {
+    description
+      "Added password encryption.";
+  }
+  revision 2014-11-25 {
+    description
+      "Added reprogramming actions.";
+  }
+  revision 2014-09-26 {
+    description
+      "Force use of connection profile. Added option to not get DNS or routes fron the cell connection.";
+  }
+  revision 2014-06-18 {
+    description
+      "Moved status from common to status yang file.";
+  }
+  revision 2014-02-04 {
+    description
+      "Added service domain leaf.";
+  }
+  revision 2014-01-28 {
+    description
+      "Changed timout values to minutes from seconds, and changed minimum
+       values to 5 minutes";
+  }
+  revision 2014-01-27 {
+    description
+      "Moved cell-dual-sim to be an augmentation of the product-features.
+       Renamed sim-slot enumeration to be SIM-A and SIM-B, and default to SIM-A";
+  }
+  revision 2014-01-17 {
+    description
+      "Added dependency on cell-dual-sim product feature. Changed default
+       sim slot to slot-b";
+  }
+  revision 2013-11-15 {
+    description
+      "Lowered the minimum value for and changed the default value for
+       switch-to-next-on-failure-timeout";
+  }
+  revision 2013-10-22 {
+    description
+      "Move to standard IETF interfaces-state table.";
+  }
+  revision 2013-10-02 {
+    description
+      "Added advanced configuration";
+  }
+  revision 2013-06-13 {
+    description
+      "Changed recovery interval range and added recovery-on-timeout and
+       max-num-retries";
+  }
+  revision 2013-06-07 {
+    description
+      "Added service-recovery container";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-02-10 {
+    description
+      "Initial revision.";
+  }
+
+  identity cellular {
+    base if:interface-type;
+    description
+      "Cellular Radio";
+  }
+
+  identity cellular-pdn {
+    base if:interface-type;
+    description
+      "Cellular additional PDN Interface";
+  }
+
+  augment "/mdsc:product-features" {
+    leaf cell-dual-sim {
+      type boolean;
+      default "false";
+      description
+        "Dual SIM support";
+    }
+  }
+
+  grouping keep-alive {
+    leaf address {
+      mandatory true;
+      type inet:host;
+      description
+        "destination address or DNS name to ping";
+    }
+    leaf interval {
+      type uint8 {
+        range "5..255";
+      }
+      default "60";
+      description
+        "time interval (mins) between pings";
+    }
+    leaf recovery-on-timeout {
+      type boolean;
+      default "true";
+      description
+        "If enabled, modem is reset if pings to the remote destination
+         do not receive a response after num-retries.";
+    }
+    leaf max-num-retries {
+      when "../recovery-on-timeout='true'";
+      type uint8 {
+        range "1..60";
+      }
+      default "15";
+      description
+        "The number of times the ping request is sent to the remote
+         destination before initiating recovery due to no response";
+    }
+  }
+
+  grouping service-recovery {
+    leaf general-recovery-interval {
+      type uint16 {
+        range "180..3600";
+      }
+      default "300";
+      description
+        "The modem is reset if it stays in \"unknown\" service-state
+         for longer than this interval (in secs).";
+    }
+    leaf lte-recovery {
+      type boolean;
+      default "true";
+      description
+        "If enabled, modem is reset if it stays in non-LTE service-state
+         for longer than lte-recovery-interval (in seconds). This should
+         be disabled if the device is going to be deployed in areas that
+         either lack or have poor LTE coverage";
+    }
+    leaf lte-recovery-interval {
+      when "../lte-recovery='true'";
+      type uint16 {
+        range "180..3600";
+      }
+      default "900";
+      description
+        "lte recovery interval (in secs)";
+    }
+  }
+
+  grouping network-config {
+    leaf technology-selection {
+      type enumeration {
+        enum "automatic" {
+          description
+            "Automatic selection";
+        }
+        enum "geran" {
+          description
+            "GSM network";
+        }
+        enum "utran" {
+          description
+            "UMTS network";
+        }
+        enum "e-utran" {
+          description
+            "LTE network";
+        }
+        enum "cdma-1xrtt" {
+          description
+            "CDMA 1xRTT network";
+        }
+        enum "cdma-evdo" {
+          description
+            "CDMA EV-DO network";
+        }
+      }
+      default "automatic";
+      description
+        "Network technology selection";
+    }
+    leaf service-domain {
+      type enumeration {
+        enum "ps-only" {
+          description
+            "packet switched only";
+        }
+        enum "cs-and-ps" {
+          description
+            "circuit and packet switched";
+        }
+      }
+      default "cs-and-ps";
+      description
+        "Network service domain";
+    }
+  }
+
+  grouping bearer-config-common {
+    leaf apn {
+      type string {
+        length "1..255";
+      }
+      description
+        "Access Point Name";
+    }
+    leaf clear-apn {
+      type boolean;
+      default "false";
+      description
+        "If this is set to true and if APN is not configured then APN will be cleared out from the modem";
+    }
+    leaf protocol {
+      type enumeration {
+        enum "ip" {
+          description
+            "IPv4 context";
+        }
+        enum "ipv6" {
+          description
+            "IPv6 context";
+        }
+        enum "ipv4v6" {
+          description
+            "Dual IPv4 and IPv6 context";
+        }
+      }
+      default "ip";
+      description
+        "PDP context protocol";
+    }
+    leaf auth-type {
+      type enumeration {
+        enum "pap" {
+          description
+            "PAP authentication";
+        }
+        enum "chap" {
+          description
+            "CHAP authentication";
+        }
+        enum "pap-or-chap" {
+          description
+            "PAP or CHAP authentication";
+        }
+      }
+      description
+        "Authentication type";
+    }
+    leaf username {
+      when "../auth-type";
+      type string;
+      description
+        "username for authentication";
+    }
+    leaf password {
+      when "../auth-type";
+      type aes-cfb-128-encrypted-string;
+      description
+        "password for authentication";
+    }
+    leaf mtu {
+      type uint16 {
+        range "68..max";
+      }
+      units "octets";
+      default "1500";
+      description
+        "The size, in octets, of the largest IPv4 packet that the
+         cellular interface will send and receive. This parameter
+         takes precendence over /interfaces/interface/mtu.";
+    }
+  }
+
+  grouping which-image-input {
+    choice which-image {
+      mandatory false;
+      leaf id {
+        description
+          "Select the specified firmware location";
+        type leafref {
+          path "/if:interfaces-state/if:interface/mds_cell:firmware/mds_cell:versions/mds_cell:id";
+        }
+      }
+    }
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_cell:cellular'";
+    container firmware {
+      when "../if:enabled ='true'";
+    }
+    container cell-config {
+      presence "Cell configuration";
+      list connection-profile {
+        key "name";
+        ordered-by user;
+        min-elements 1;
+        description
+          "A configuration profile containing parameters
+           for connecting to the cellular network";
+        leaf name {
+          type string;
+          description
+            "Connection profile name";
+        }
+        container network-config {
+          uses network-config;
+          description
+            "Network configuration";
+        }
+        container bearer-config {
+          uses bearer-config-common;
+          leaf request-dns {
+            when "not(../../../../ip:ipv4/mdsif:dhcp)";
+            type boolean;
+            default "true";
+            description
+              "Request DNS search domains, domain names and servers";
+          }
+          leaf request-routers {
+            when "not(../../../../ip:ipv4/mdsif:dhcp)";
+            type boolean;
+            default "true";
+            description
+              "Request default router(s)";
+          }
+          description
+            "Data bearer (PDP Context or EPS bearer) configuration";
+        }
+        container keep-alive {
+          presence "keep-alive configuration";
+          uses keep-alive;
+          description
+            "Keep alive configuration for sending ICMP Echo messages to a
+             remote host/server periodically to keep the connection alive";
+        }
+        container service-recovery {
+          uses service-recovery;
+          description
+            "Service recovery configuration";
+        }
+        leaf sim-slot {
+          when "/mdsc:product-features/cell-dual-sim = 'true'";
+          type mds_cell_common:sim-slot-type;
+          default "SIM-A";
+          description
+            "SIM card slot to use for this connection profile";
+        }
+        leaf automatic-operator-switching {
+          type boolean;
+          default "true";
+          description
+            "Automatically switch modem firmware to be compatible with the inserted SIM.";
+        }
+        list extra-pdn {
+          key "apn";
+          leaf interface {
+            type if:interface-ref;
+            mandatory true;
+            must "not(. = current ()/../../../../if:name)" {
+              error-message "A secondary PDN cannot be the same as the primary cellular interface.";
+            }
+            must "(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_cell:cellular-pdn')" {
+              error-message "This interface must be of type cellular-pdn.";
+            }
+          }
+          uses bearer-config-common;
+          description
+            "Data bearer (PDP Context or EPS bearer) configuration";
+        }
+      }
+      container connection-profile-switching {
+        leaf switch-to-next-on-failure {
+          type boolean;
+          default "false";
+          description
+            "Switch connection profile to next one in the list
+             when connection attempt using current profile fails.";
+        }
+        leaf switch-to-next-on-failure-timeout {
+          when "../switch-to-next-on-failure";
+          type uint16 {
+            range "0..1440";
+          }
+          default "15";
+          units "minutes";
+          description
+            "Connection profile will be switched to next one in the list
+             after expiry of this timeout if connection is not established
+             using current profile.";
+        }
+        leaf switch-to-next-on-roaming {
+          type boolean;
+          default "false";
+          description
+            "Switch connection profile to next one in the list
+             when roaming is detected";
+        }
+        leaf switch-to-next-on-roaming-timeout {
+          when "../switch-to-next-on-roaming";
+          type uint16 {
+            range "0..1440";
+          }
+          default "5";
+          units "minutes";
+          description
+            "Connection profile will be switched to next one in the list
+             after expiry of this timeout if modem is in roaming state using
+             the current profile.";
+        }
+        leaf switch-to-next-on-netmon {
+          type boolean;
+          default "false";
+          description
+            "Switch connection profile to next one in the list
+             when associated netmon operation is down.";
+        }
+        leaf switch-to-first-on-timeout {
+          type boolean;
+          default "false";
+          description
+            "Switch connection profile to first one in the list
+             after predefined timeout.";
+        }
+        leaf switch-to-first-timeout {
+          when "../switch-to-first-on-timeout";
+          type uint16 {
+            range "5..1440";
+          }
+          default "60";
+          units "minutes";
+          description
+            "Connection profile will be switched to first one in the list
+             after expiry of this timeout.";
+        }
+      }
+      description
+        "Parameters for controlling switching between connection profiles";
+    }
+  }
+  augment "/if:interfaces-state/if:interface" {
+    when "if:type = 'mds_cell:cellular'";
+    container cell-status {
+      config false;
+      uses mds_cell_status:cell-status;
+    }
+    container firmware {
+      config false;
+      uses mds_cell_status:cell-fw-status;
+      container reprogram-status {
+        config false;
+        description
+          "The current status of a reprogramming task.";
+        uses mdsc:file-transfer-status;
+      }
+      container reprogram-file-limits {
+        config false;
+        description
+          "The file size limits for a cellular modem firmware image.";
+        uses mdsc:file-size-limits;
+      }
+    }
+  }
+  augment "/sys:system/mdssys:status-change-count" {
+    leaf cell-reprogram {
+      config false;
+      type uint32;
+      description
+        "Counter that tracks the number of changes in status for cellular modem reprogramming.";
+    }
+  }
+  rpc reprogram {
+    description
+      "Download a firmware package and reprogram the Cell modem with it.";
+    input {
+      leaf interface {
+        type if:interface-ref;
+        mandatory true;
+        description
+          "Cell modem interface";
+      }
+      uses mdsc:external-file;
+    }
+  }
+  rpc cancel-reprogram {
+    description
+      "Cancels a reprogramming task, if one is active";
+    input {
+      leaf interface {
+        type if:interface-ref;
+        mandatory true;
+        description
+          "Cell modem interface";
+      }
+    }
+  }
+  rpc delete-image {
+    description
+      "Deletes an image stored on the modem.";
+    input {
+      leaf interface {
+        type if:interface-ref;
+        mandatory true;
+        description
+          "Cell modem interface";
+      }
+      uses which-image-input;
+    }
+  }
+  rpc restart {
+    description
+      "Request that the modem be restarted immediately.
+       The modem will boot using the specified firmware image.";
+    input {
+      leaf interface {
+        type if:interface-ref;
+        mandatory true;
+        description
+          "Cell modem interface";
+      }
+      uses which-image-input;
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

@@ -1,0 +1,102 @@
+submodule mds-service-snmp-usm {
+  belongs-to mds-service-snmp {
+    prefix snmp;
+  }
+
+  import mds-services {
+    prefix serv;
+  }
+  include mds-service-snmp-common;
+
+  grouping key {
+    choice key-type {
+      leaf password {
+        type string;
+        description
+          "Will be used to create a localized key.";
+      }
+      leaf key {
+        type string;
+        description
+          "Authentication key";
+      }
+    }
+  }
+
+  grouping user-list {
+    list user {
+      key "name";
+      reference "SNMP-USER-BASED-SM-MIB.usmUserTable";
+      leaf name {
+        type snmp:identifier;
+        reference
+          "SNMP-USER-BASED-SM-MIB.usmUserName
+           SNMP-USER-BASED-SM-MIB.usmUserSecurityName";
+      }
+      leaf security-name {
+        type snmp:identifier;
+        description
+          "If not set, the value of 'name' is operationally used";
+        reference "SNMP-USER-BASED-SM-MIB.usmUserSecurityName";
+      }
+      container auth {
+        presence "enables authentication";
+        description
+          "Enables authentication protocol of the user";
+        choice protocol {
+          mandatory true;
+          reference "SNMP-USER-BASED-SM-MIB.usmUserAuthProtocol";
+          container md5 {
+            presence "md5";
+            uses key;
+          }
+          container sha {
+            presence "sha";
+            uses key;
+          }
+        }
+      }
+      container priv {
+        presence "enables encryption";
+        description
+          "Enables encryption for the authentication process";
+        must "../auth" {
+          error-message "when privacy is used, authentication must also be used";
+        }
+        choice protocol {
+          mandatory true;
+          reference "SNMP-USER-BASED-SM-MIB.usmUserPrivProtocol";
+          container des {
+            presence "des";
+            uses key;
+          }
+          container aes {
+            presence "aes";
+            uses key;
+          }
+        }
+      }
+    }
+  }
+
+  augment "/serv:services/snmp:snmp" {
+    container usm {
+      description
+        "Configuration of the User-based Security Model";
+      container local {
+        uses user-list;
+      }
+      list remote {
+        key "engine-id";
+        leaf engine-id {
+          type snmp:engine-id;
+          description
+            "The value of this field MUST NOT be the same as the local
+             engine-id, as defined by /snmp/agent/engine-id";
+          reference "SNMP-USER-BASED-SM-MIB.usmUserEngineID";
+        }
+        uses user-list;
+      }
+    }
+  }
+}

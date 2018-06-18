@@ -1,0 +1,40 @@
+module mds-service-snmp {
+  namespace "com:gemds:services:snmp";
+  prefix snmp;
+
+  include mds-service-snmp-common;
+  include mds-service-snmp-agent;
+  include mds-service-snmp-community;
+  include mds-service-snmp-notification;
+  include mds-service-snmp-target;
+  include mds-service-snmp-vacm;
+  include mds-service-snmp-usm;
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module configures snmp settings.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2014-02-07 {
+    description
+      "Updated to new model.";
+  }
+  revision 2013-08-29 {
+    description
+      "Added debug flag.";
+  }
+  revision 2013-04-12 {
+    description
+      "Initial revision.";
+  }
+}

@@ -1,0 +1,199 @@
+module mds-service-ddns {
+  namespace "com:gemds:services:ddns";
+  prefix ddns;
+
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-certmgr {
+    prefix mdscert;
+  }
+  import ietf-yang-types {
+    prefix yang;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring ddns service.
+     \t\t
+     Copyright (c) 2015 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-04-13 {
+    description
+      "Changed path for certificates.";
+  }
+  revision 2015-01-23 {
+    description
+      "Initial revision.";
+  }
+
+  augment "/serv:services" {
+    container ddns {
+      description
+        "Dynamic Domain Name System (DDNS). Updates a DNS server 
+         with the dynamic IP address of an interface on this device.";
+      must
+        "(enabled = 'true' and provider and hostname and interface and username and password) or 
+         (enabled = 'false')" {
+        error-message "Provider, hostname, username, password, and interface must be configured";
+      }
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to run the DDNS service";
+      }
+      leaf provider {
+        description
+          "The DDNS provider to use";
+        type enumeration {
+          enum "dyn.com" {
+            description
+              "dyn.com DDNS service, also known as DynDNS or dyndns.com";
+          }
+          enum "noip.com" {
+            description
+              "noip.com DDNS service";
+          }
+          enum "other" {
+            description
+              "User defined URL";
+          }
+        }
+      }
+      leaf url {
+        when "../provider = 'other'";
+        type string {
+          length "1 .. 1024";
+        }
+        default "http://[USERNAME]:[PASSWORD]@example.com/nic/update?hostname=[HOSTNAME]&myip=[IP]";
+        description
+          "A user defined URL to use for sending updates to the DDNS server when service is set to 'other'";
+      }
+      leaf hostname {
+        type string {
+          length "1 .. 255";
+        }
+        description
+          "The fully qualified domain name to update with a new IP";
+      }
+      leaf username {
+        type string {
+          length "1 .. 255";
+        }
+        description
+          "The username for the account at the DDNS server";
+      }
+      leaf password {
+        type aes-cfb-128-encrypted-string {
+          length "1..352";
+        }
+        description
+          "The password for the account at the DDNS server";
+      }
+      leaf interface {
+        type if:interface-ref;
+        description
+          "The IP address from this interface will be used to update the DDNS server";
+      }
+      leaf update-interval {
+        type uint32 {
+          range "5..10080";
+        }
+        default "1440";
+        description
+          "The interval, in minutes, at which periodic updates will occur";
+      }
+      leaf failure-retry-interval {
+        type uint32 {
+          range "5..30";
+        }
+        default "5";
+        description
+          "The interval, in seconds, at which retries will occur if a connection cannot be made to the DDNS server";
+      }
+      leaf max-failure-retries {
+        type uint32 {
+          range "1..10";
+        }
+        default "6";
+        description
+          "The max number of times to retry connecting to the DDNS server for an update";
+      }
+      leaf https {
+        when "../provider != 'other'";
+        type boolean;
+        default "false";
+        description
+          "Whether or not to use HTTPS when sending DDNS updates";
+      }
+      leaf verify-server-certificate {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to verify the DDNS server's certificate";
+      }
+      leaf ca-certificate {
+        type string;
+        description
+          "A locally stored CA certficate to use when verifying the DDNS server's certificate";
+      }
+      container status {
+        config false;
+        leaf update-state {
+          description
+            "The current state of DDNS update operation";
+          type enumeration {
+            enum "disabled" {
+              description
+                "DDNS is disabled";
+            }
+            enum "failed" {
+              description
+                "An update cannot be sent to the DDNS server";
+            }
+            enum "pending" {
+              description
+                "The current IP address of the selected interface is pending a successful update to the DDNS server";
+            }
+            enum "success" {
+              description
+                "The current IP address of the selected interface was sent successfully to the DDNS server";
+            }
+          }
+        }
+        leaf update-failure-reason {
+          type string;
+          description
+            "The reason if the DDNS failed to update";
+        }
+        leaf update-timestamp {
+          type yang:date-and-time;
+          description
+            "timestamp of last update";
+        }
+      }
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

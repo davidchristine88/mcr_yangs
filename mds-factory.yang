@@ -1,0 +1,115 @@
+module mds-factory {
+  namespace "com:gemds:mds-factory";
+  prefix mdsfact;
+
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+  import mds-common {
+    prefix mc;
+  }
+  import ietf-system {
+    prefix sys;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains factory-only level commands.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-01-26 {
+    description
+      "Add OEM snapshots.";
+  }
+  revision 2013-10-22 {
+    description
+      "Added secure JTAG..";
+  }
+  revision 2013-06-14 {
+    description
+      "Added deleate-rollbacks RPC";
+  }
+  revision 2013-05-13 {
+    description
+      "Added nacm restrictions. Added updates based on factory test spec.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2013-01-04 {
+    description
+      "Initial revision.";
+  }
+
+  grouping export-input {
+    uses mc:external-file;
+  }
+
+  augment "/sys:system" {
+    leaf default_password {
+      type boolean;
+      config false;
+      description
+        "true if the admin account's password is currently 'admin'";
+    }
+    list detected-serial-ports {
+      config false;
+      key "system-name";
+      leaf system-name {
+        type string;
+        description
+          "The udev name";
+      }
+      leaf user-name {
+        type string;
+        description
+          "The name to be presented to the user";
+      }
+      leaf physical-name {
+        type string;
+        description
+          "The name of the /dev entry for this port";
+      }
+      leaf device-type {
+        type string;
+        description
+          "What sort of device is this, lnserial/usb etc..";
+      }
+    }
+  }
+  container oem {
+    leaf enable {
+      type boolean;
+      default "false";
+      description
+        "Set to true to enable OEM customization.";
+    }
+    container web {
+      leaf title {
+        type string;
+        default "Device Manager";
+        description
+          "Title of the web management page.";
+      }
+    }
+  }
+  container factory {
+    nacm:default-deny-all;
+    leaf scratchpad {
+      type string;
+      description
+        "Internal factory scratchpad.";
+    }
+  }
+}

@@ -1,0 +1,635 @@
+module mds-service-qos {
+  namespace "com:gemds:services:qos";
+  prefix qos;
+
+  import ietf-yang-types {
+    prefix yang;
+  }
+  import mds-common {
+    prefix mds;
+  }
+  import mds-services {
+    prefix serv;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-if-vlan {
+    prefix mdsvlan;
+  }
+  import mds-security {
+    prefix sec;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring firewall service.
+     \t\t
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-01-12 {
+    description
+      "Added traffic modify policy for setting TOS/DSCP fields.";
+  }
+  revision 2015-06-03 {
+    description
+      "Added traffic shaping policy.";
+  }
+  revision 2014-05-09 {
+    description
+      "Fixed error with TOS classifier.";
+  }
+  revision 2014-04-17 {
+    description
+      "Fixed spelling errors and loosened the length
+       requirement on name lengths";
+  }
+  revision 2014-04-02 {
+    description
+      "Added descriptions, fixed typos, made some changes
+       to the data model stucture.";
+  }
+  revision 2014-03-14 {
+    description
+      "Fixed typos, added TOS and DSCP matching, 
+       cleaned up the xpath commands.";
+  }
+  revision 2014-03-04 {
+    description
+      "Initial revision.";
+  }
+
+  grouping mac-spec {
+    container not {
+      presence "not";
+      description
+        "If present, this inverts the sense of the mach";
+    }
+    leaf address {
+      mandatory true;
+      type yang:mac-address;
+      description
+        "Mac address";
+    }
+  }
+
+  grouping ethertype-spec {
+    container not {
+      presence "not";
+      description
+        "If present, this inverts the sense of the match";
+    }
+    choice type {
+      mandatory true;
+      case protocol {
+        leaf protocol {
+          type mds:ether-type;
+        }
+      }
+      case custom {
+        leaf custom {
+          type union {
+            type uint16;
+            type mds:hex-value {
+              length "6" {
+                description
+                  "hexUnsignedShort";
+                error-message
+                  "Two bytes must have exactly four hex characters
+                   after the 0x prefix";
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  grouping htb-root-config {
+    leaf default-class {
+      mandatory true;
+      type leafref {
+        path "../class/name";
+      }
+      description
+        "Unclassified traffic will be placed into this class.";
+    }
+    leaf committed-rate {
+      mandatory true;
+      type uint32 {
+        range "1..100000";
+      }
+      description
+        "The minimal rate of traffic, in kbps.";
+    }
+    leaf max-rate {
+      type uint32 {
+        range "1..100000";
+      }
+      must "current() >= ../committed-rate";
+      description
+        "The maximal rate of traffic, in kbps.";
+    }
+    leaf burst {
+      type uint32;
+      description
+        "The number of bytes than can be burst above the configured rate.";
+    }
+    list class {
+      description
+        "A list of the classes of traffic flows where each class has its own rate configuration.";
+      key "name";
+      unique "priority";
+      mds:code-name "htb_class";
+      leaf name {
+        mandatory true;
+        type sec:word-string {
+          length "1..max";
+        }
+        description
+          "String identifying the HTB class.";
+      }
+      leaf committed-rate {
+        mandatory true;
+        type uint32 {
+          range "1..100000";
+        }
+        description
+          "The minimal rate of traffic, in kbps.";
+      }
+      leaf max-rate {
+        type uint32 {
+          range "1..100000";
+        }
+        must "current() >= ../committed-rate";
+        description
+          "The maximal rate of traffic, in kbps.";
+      }
+      leaf burst {
+        type uint32;
+        description
+          "The number of bytes than can be burst above the configured rate.";
+      }
+      leaf priority {
+        type uint8 {
+          range "0..16";
+        }
+        description
+          "The servicing priority.";
+      }
+      leaf-list classifier {
+        type leafref {
+          path "/serv:services/qos/classifier/name";
+        }
+        description
+          "A list of classifers. If any of the classifiers
+           match, then the traffic will be placed into this class.";
+      }
+      leaf next-policy {
+        type leafref {
+          path "/serv:services/qos/policy/name";
+        }
+        description
+          "Next policy to be applied to this traffic class. This
+           can be used to setup a hierarchy of policies";
+      }
+    }
+  }
+
+  augment "/serv:services" {
+    container qos {
+      description
+        "Configuration of the Quality of Service system";
+      leaf enabled {
+        type boolean;
+        default "false";
+        description
+          "Whether or not to run the QoS service";
+      }
+      list policy {
+        description
+          "The QoS policies to apply to network traffic.";
+        key "name";
+        leaf name {
+          type sec:word-string {
+            length "1..max";
+          }
+          description
+            "String identifying the policy";
+        }
+        choice type {
+          case modify {
+            container modify {
+              description
+                "Modifies fields in network packets.";
+              presence "modify";
+              leaf-list classifier {
+                min-elements 1;
+                type leafref {
+                  path "/serv:services/qos/classifier/name";
+                }
+                description
+                  "A list of classifers. If any of the classifiers
+                   match, then the traffic will be modified accordingly.";
+              }
+              choice modify-type {
+                mandatory true;
+                case tos {
+                  container tos {
+                    description
+                      "Set the ToS value in IPv4 packets.";
+                    presence "tos";
+                    leaf value {
+                      mandatory true;
+                      type uint8 {
+                        range "0..255";
+                      }
+                    }
+                  }
+                }
+                case dscp {
+                  container dscp {
+                    description
+                      "Set the DSCP value in IPv4 packets.";
+                    presence "dscp";
+                    leaf value {
+                      mandatory true;
+                      type union {
+                        type uint8 {
+                          range "0..63";
+                        }
+                        type mds:hex-value {
+                          length "4" {
+                            description
+                              "hexUnsignedChar";
+                            error-message "One byte must have exactly two hex characters after the 0x prefix";
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          case prioritization {
+            container prioritization {
+              description
+                "Prioritizes the transmission of classes of traffic to give precedence to 
+                 critical traffic flows.";
+              must "count(class) > 1 or ((count(class) = 1) and default-priority and (default-priority != class/priority))" {
+                error-message
+                  "Prioritization policies need at least two classes, or
+                   one class with a priority that is different from the 
+                   default priority.";
+              }
+              leaf default-priority {
+                mandatory true;
+                type uint8 {
+                  range "1..16";
+                }
+                description
+                  "Priority of any unclassified traffic (1=highest).";
+              }
+              list class {
+                mds:code-name "bucket";
+                key "name";
+                unique "priority";
+                max-elements "16";
+                leaf name {
+                  type sec:word-string {
+                    length "1..max";
+                  }
+                  description
+                    "String identifying the class";
+                }
+                leaf priority {
+                  mandatory true;
+                  type uint8 {
+                    range "1..16";
+                  }
+                  description
+                    "Priority of this traffic class (1=highest).";
+                }
+                leaf-list classifier {
+                  type leafref {
+                    path "/serv:services/qos/classifier/name";
+                  }
+                  description
+                    "A list of classifers. If any of the classifiers
+                     match, then the traffic will be placed into this class.";
+                }
+                leaf next-policy {
+                  must "count(../classifier) = 0 or /serv:services/qos/policy[name = current()]/fairness" {
+                    error-message "Classifiers are applied to the leaf classes in a hierarchy of policies.";
+                  }
+                  type leafref {
+                    path "/serv:services/qos/policy/name";
+                  }
+                  description
+                    "Next policy to be applied to this traffic class. This
+                     can be used to setup a hierarchy of policies";
+                }
+                description
+                  "Configuration of each priority class.";
+              }
+            }
+          }
+          case fairness {
+            container fairness {
+              description
+                "Applies an algorithm to ensure all flows of traffic have an equal
+                 opportunity to utilize transmission bandwidth.";
+              choice fairness-type {
+                case sfq {
+                  container sfq {
+                    presence "sfq config";
+                    leaf perturb {
+                      type uint32 {
+                        range "5..60";
+                      }
+                      default "10";
+                      units "seconds";
+                      description
+                        "Reconfigure the hashing algorithim once
+                         this many seconds has gone by.";
+                    }
+                    leaf quantum {
+                      type uint32 {
+                        range "1600..max";
+                      }
+                      units "bytes";
+                      description
+                        "Amount of bytes to send before switching to the next stream.";
+                    }
+                    leaf limit {
+                      type uint32 {
+                        range "16..127";
+                      }
+                      units "packets";
+                      description
+                        "Number of packets to be queued";
+                    }
+                  }
+                }
+              }
+            }
+          }
+          case shaping {
+            container shaping-htb {
+              description
+                "Applies maximum rate limits and ensures
+                 minimum allocated bandwidth to different flows of traffic.";
+              presence "htb config";
+              uses htb-root-config;
+            }
+          }
+        }
+      }
+      list classifier {
+        description
+          "Filters used to identify classes of network traffic.";
+        key "name";
+        leaf name {
+          type sec:word-string {
+            length "1..max";
+          }
+          description
+            "String identifying the classifier.";
+        }
+        leaf match-type {
+          type enumeration {
+            enum "all" {
+              description
+                "All match conditions in the list should match in order
+                 for the packet to be classified in this traffic class";
+            }
+            enum "any" {
+              description
+                "Any one of the match conditions in the list should match in
+                 order for the packet to be classified in this traffic class";
+            }
+          }
+          default "any";
+          description
+            "Match type for list of match conditions";
+        }
+        list match {
+          key "name";
+          leaf name {
+            type sec:word-string {
+              length "1..max";
+            }
+            description
+              "ASCII string identifying the filter";
+          }
+          container ipv4 {
+            container protocol {
+              description
+                "Specify the IPv4 protocol.";
+              presence "ipv4 protocol";
+              container not {
+                presence "not";
+                description
+                  "If present, this inverts the sense of the match";
+              }
+              choice type {
+                mandatory true;
+                case assigned-number {
+                  leaf assigned-number {
+                    description
+                      "Specify the IP protocol from a list of defined protocols.";
+                    type mds:protocol-type;
+                  }
+                }
+                case custom {
+                  leaf custom {
+                    type union {
+                      type uint8;
+                      type mds:hex-value {
+                        length "4" {
+                          description
+                            "hexUnsignedChar";
+                          error-message "One byte must have exactly two hex characters after the 0x prefix";
+                        }
+                      }
+                    }
+                    description
+                      "Specify the IP protocol as a decimal or hexadecimal number.";
+                  }
+                }
+              }
+            }
+            container src-address {
+              presence "source address";
+              uses mds:address-spec;
+              description
+                "source address(es) specification";
+            }
+            container src-port {
+              presence "source port";
+              when "not(../protocol/not) and (../protocol/assigned-number = 'tcp' or ../protocol/assigned-number='udp' or ../protocol/assigned-number='sctp')";
+              uses mds:port-spec;
+              description
+                "source port(s) specification";
+            }
+            container dst-address {
+              presence "destination address";
+              uses mds:address-spec;
+              description
+                "destination address(es) specification";
+            }
+            container dst-port {
+              presence "destination port";
+              when "not(../protocol/not) and (../protocol/assigned-number = 'tcp' or ../protocol/assigned-number='udp' or ../protocol/assigned-number='sctp')";
+              uses mds:port-spec;
+              description
+                "destination port(s) specification";
+            }
+            choice tos-dscp {
+              case dscp {
+                container dscp {
+                  presence "ipv4 dscp";
+                  container not {
+                    presence "not";
+                    description
+                      "If present, this inverts the sense of the match";
+                  }
+                  leaf value {
+                    mandatory true;
+                    type uint8 {
+                      range "0..63";
+                    }
+                    description
+                      "The six bit mark in the IPv4 header.";
+                  }
+                  description
+                    "Differentiated Services Code Point. DSCP and TOS are two different interpratations of 
+                     the same byte in the IPv4 header.";
+                }
+              }
+              case tos {
+                container tos {
+                  presence "ipv4 tos";
+                  container not {
+                    presence "not";
+                    description
+                      "If present, this inverts the sense of the match";
+                  }
+                  leaf value {
+                    mandatory true;
+                    type union {
+                      type uint8;
+                      type mds:hex-value {
+                        length "4" {
+                          description
+                            "hexUnsignedChar";
+                          error-message "One byte must have exactly two hex characters after the 0x prefix";
+                        }
+                      }
+                    }
+                    description
+                      "Matches against the TOS byte in the IPv4 header.";
+                  }
+                  description
+                    "Type of service field. DSCP and TOS are two different interpratations of 
+                     the same byte in the IPv4 header.";
+                }
+              }
+            }
+          }
+          container ethernet {
+            container ether-type {
+              presence "ether-type config";
+              uses ethertype-spec;
+              description
+                "The two bytes in the ethernet header that define the ethernet protocol used.";
+            }
+            container src-address {
+              presence "eth source address";
+              uses mac-spec;
+              description
+                "The source MAC address.";
+            }
+            container dst-address {
+              presence "eth dest address";
+              uses mac-spec;
+              description
+                "The destination MAC address.";
+            }
+            container vlan-priority {
+              presence "vlan priority";
+              when "../ether-type/protocol = 'vlan' and not(../ether-type/not)";
+              container not {
+                presence "not";
+                description
+                  "If present, this inverts the sense of the vlan-priority";
+              }
+              leaf priority {
+                mandatory true;
+                type uint8 {
+                  range "0..7";
+                }
+              }
+              description
+                "The priority bits in the VLAN header.";
+            }
+            container vlan-id {
+              presence "vlan id";
+              when "../ether-type/protocol = 'vlan' and not(../ether-type/not)";
+              container not {
+                presence "not";
+                description
+                  "If present, this inverts the sense of the vlan-id";
+              }
+              leaf id {
+                mandatory true;
+                type mdsvlan:vlan-id;
+                description
+                  "The ID of the vlan to filter";
+              }
+              description
+                "The identifier in the VLAN header.";
+            }
+            container encap-protocol {
+              presence "vlan encap protocol";
+              when "../ether-type/protocol = 'vlan' and not(../ether-type/not)";
+              uses ethertype-spec;
+              description
+                "The protocol encapsulated by the VLAN header. Can be entered as a decimal
+                 or hexadecimal value.";
+            }
+          }
+        }
+        leaf metric {
+          type uint32 {
+            range "1..20";
+          }
+          default "10";
+          description
+            "Classifiers with a lower metric will be evaluated first.";
+        }
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface" {
+    when "if:type != 'mds_bond:bond' and if:type != 'mds_bridge:bridge'and if:type != 'mds_gre:gre' and if:type != 'mds_loopback:loopback' and if:type != 'mds_vlan:vlan'";
+    container qos {
+      leaf output {
+        type leafref {
+          path "/serv:services/qos/policy/name";
+        }
+      }
+    }
+  }
+}

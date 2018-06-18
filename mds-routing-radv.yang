@@ -1,0 +1,114 @@
+module mds-routing-radv {
+  namespace "com:gemds:mds-routing-radv";
+  prefix mds-routing-radv;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+  import mds-routing {
+    prefix mds-routing;
+  }
+
+  description
+    "This module contains a collection of YANG definitions for
+     configuring IPv6 router Advertisements (RFC 4861, 6106).
+     
+     Copyright (c) 2017 by GE MDS LLC. All rights reserved.";
+
+  grouping radv-prefix-common {
+    leaf onlink {
+      type boolean;
+      default "true";
+      description
+        "Whether this prefix may be used for onlink determination.";
+    }
+    leaf autoconf {
+      type boolean;
+      default "true";
+      description
+        "Whether hosts may use this prefix for stateless autoconfiguration.";
+    }
+    leaf valid-lifetime {
+      type uint32;
+      default "86400";
+      units "seconds";
+      description
+        "The time interval (after the receipt of RA) for which the prefix information 
+         is valid i.e. the autoconfigured IP addresses can be assigned and hosts with 
+         that IP addresses are considered directly reachable. 0 means the prefix is no 
+         longer valid.";
+    }
+    leaf preferred-lifetime {
+      type uint32;
+      default "14400";
+      units "seconds";
+      description
+        "The time interval (after the receipt of RA) for which the IP addresses generated 
+         from the prefix using stateless autoconfiguration remain preferred.";
+    }
+  }
+
+  grouping radv-interface-common {
+    leaf managed {
+      type boolean;
+      default "false";
+      description
+        "Address assignment via DHCPv6.";
+    }
+    leaf other {
+      type boolean;
+      default "false";
+      description
+        "Other configuration assignment via DHCPv6.";
+    }
+    leaf max-ra-interval {
+      type uint32;
+      default "600";
+      units "seconds";
+      description
+        "Maximum time interval for sending RAs.";
+    }
+  }
+
+  grouping radv {
+    leaf enabled {
+      type boolean;
+      default "true";
+      description
+        "Specifies whether radv is enabled.";
+    }
+    list interface {
+      key "name";
+      min-elements 1;
+      leaf name {
+        type if:interface-ref;
+        description
+          "The interface on which the protocol is activated with given interface-specific options.";
+      }
+      uses radv-interface-common;
+      list prefix {
+        key "network";
+        leaf network {
+          type inet:ipv6-prefix;
+          description
+            "IPv6 prefix.";
+        }
+        uses radv-prefix-common;
+        description
+          "Prefix specific advertisement options.";
+      }
+    }
+  }
+
+  augment "/mds-routing:routing" {
+    container radv {
+      presence "RADV configiuration";
+      uses radv;
+      description
+        "Configuration of RADV.";
+    }
+  }
+}

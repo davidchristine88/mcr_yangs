@@ -1,0 +1,13 @@
+module ietf-interfaces-annotation {
+  namespace "urn:ietf:params:xml:ns:yang:ietf-interfaces-annotation";
+  prefix ifa;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+
+  revision 2014-05-08 {
+    description
+      "Changed MCR to fully hide ietf type parameter";
+  }
+}

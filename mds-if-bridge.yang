@@ -1,0 +1,331 @@
+module mds-if-bridge {
+  namespace "com:gemds:mds-if-bridge";
+  prefix mds_bridge;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-if-ieee80211 {
+    prefix wifi;
+  }
+  import mds-if-vlan {
+    prefix mds_vlan;
+  }
+  import mds-if-gre {
+    prefix mds_gre;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     Bridged network devices as found on MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-09-21 {
+    description
+      "Prevent ln-nic from being added to the bridge";
+  }
+  revision 2015-08-14 {
+    description
+      "Set units to uniform style";
+  }
+  revision 2014-08-26 {
+    description
+      "Added GRE device and removed obsoleted station-bridge wifi mode";
+  }
+  revision 2014-05-20 {
+    description
+      "Fix dependencies for the Wi-Fi stattion and bridge.";
+  }
+  revision 2013-11-07 {
+    description
+      "Add checks so bridge can not be added as a member of itself.";
+  }
+  revision 2013-10-22 {
+    description
+      "Move to standard IETF interfaces-state table.";
+  }
+  revision 2013-07-12 {
+    description
+      "Updated bridge-settings.";
+  }
+  revision 2013-06-21 {
+    description
+      "Updated wifi-station interface.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-02-10 {
+    description
+      "Initial revision.";
+  }
+
+  feature if-bridge {
+    description
+      "This feature means the device supports bridged network interfaces.";
+  }
+
+  identity bridge {
+    base if:interface-type;
+    description
+      "Bridge Interface";
+  }
+
+  grouping bridge-port-settings {
+    leaf port-priority {
+      type uint32 {
+        range "0..255";
+      }
+      default "32";
+      description
+        "The value of the priority field that is contained in
+         the first (in network byte order) octet of the (2 octet
+         long) Port ID.  On bridges supporting IEEE 802.1t or IEEE 802.1w,
+         permissible values are 0-240, in steps of 16.";
+    }
+    leaf port-path-cost {
+      type uint32 {
+        range "1..200000000";
+      }
+      default "100";
+      description
+        "The contribution of this port to the path cost of
+         paths towards the spanning tree root which include
+         this port.  802.1D-1998 recommends that the default
+         value of this parameter be in inverse proportion to
+         the speed of the attached LAN.";
+    }
+  }
+
+  augment "/if:interfaces-state/if:interface" {
+    when "if:type = 'mds_bridge:bridge'";
+    container bridge {
+      container stp {
+        list port {
+          config false;
+          key "interface";
+          leaf interface {
+            type if:interface-ref;
+          }
+          leaf number {
+            type uint32;
+            description
+              "The port number of the port for which this entry
+               contains Spanning Tree Protocol management information.";
+          }
+          leaf priority {
+            type uint8;
+            description
+              "The value of the priority field that is contained in
+               the first (in network byte order) octet of the (2 octet
+               long) Port ID.";
+          }
+          leaf state {
+            type enumeration {
+              enum "disabled" {
+                value 1;
+              }
+              enum "blocking" {
+                value 2;
+              }
+              enum "listening" {
+                value 3;
+              }
+              enum "learning" {
+                value 4;
+              }
+              enum "forwarding" {
+                value 5;
+              }
+              enum "broken" {
+                value 6;
+              }
+            }
+            description
+              "The port's current state, as defined by application of
+               the Spanning Tree Protocol.  This state controls what
+               action a port takes on reception of a frame.  If the
+               bridge has detected a port that is malfunctioning, it
+               will place that port into the broken(6) state.  For
+               ports that are disabled, this
+               object will have a value of disabled(1).";
+          }
+          leaf path-cost {
+            type uint32;
+            description
+              "The contribution of this port to the path cost of
+               paths towards the spanning tree root which include
+               this port.";
+          }
+          leaf designated-root {
+            type string;
+            description
+              "The unique Bridge Identifier of the Bridge
+                  recorded as the Root in the Configuration BPDUs
+                  transmitted by the Designated Bridge for the
+                  segment to which the port is attached.";
+          }
+          leaf designated-cost {
+            type uint32;
+            description
+              "The path cost of the Designated Port of the segment
+                  connected to this port.  This value is compared to the
+                  Root Path Cost field in received bridge PDUs.";
+          }
+          leaf designated-bridge {
+            type string;
+            description
+              "The Bridge Identifier of the bridge that this
+                  port considers to be the Designated Bridge for
+                  this port's segment.";
+          }
+          leaf designated-port {
+            type uint32;
+            description
+              "The Port Identifier of the port on the Designated
+                  Bridge for this port's segment.";
+          }
+        }
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_bridge:bridge'";
+    container bridge-settings {
+      container members {
+        list port {
+          key "interface";
+          leaf interface {
+            type if:interface-ref;
+            must "not(. = current()/../../../../if:name)" {
+              error-message "A bridge cannot be a member of itself";
+            }
+            must
+              "not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_cell:cellular') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_cell:cellular-pdn') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_wifi:wifi') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_sd:sd-nic') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_ln:ln-nic') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_lw:lw-nic') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_ln:nx-nic') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_loopback:loopback') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_vlan:vlan') and
+               not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_gre:gre' and
+                   /if:interfaces/if:interface[if:name = current()/.]/mds_gre:gre-config/mds_gre:mode = 'mds_gre:ip-over-gre')" {
+              error-message "This type of device cannot be bridged as an interface.";
+            }
+            must "not( .= (/if:interfaces/if:interface[if:name != current()/../../../../if:name]/bridge-settings/members/port/interface))" {
+              error-message "Interfaces can only be a member of one bridge.";
+            }
+            must
+              "not(/if:interfaces/if:interface[if:name = current()/.]/mds_vlan:vlan-mode) or
+               /if:interfaces/if:interface[if:name = current()/.]/mds_vlan:vlan-mode = 'none'" {
+              error-message "Ports with vlan enabled cannot be placed into a bridge.";
+            }
+          }
+          uses bridge-port-settings;
+        }
+        list wifi-ap {
+          key "ssid";
+          leaf ssid {
+            type leafref {
+              path "/if:interfaces/if:interface/wifi:wifi-config/wifi:ap-config/wifi:ap/wifi:ssid";
+            }
+            must "not( .= (/if:interfaces/if:interface[if:name != current()/../../../../if:name]/bridge-settings/members/wifi-ap/ssid))" {
+              error-message "WiFi APs can only be a member of one bridge.";
+            }
+            must
+              "not (/if:interfaces/if:interface/wifi:wifi-config/wifi:ap-config/wifi:ap[wifi:ssid = current()/.]) or
+               /if:interfaces/if:interface/wifi:wifi-config/wifi:ap-config/wifi:ap[wifi:ssid = current()/.]/mds_vlan:vlan-mode  = 'none'" {
+              error-message "APs with vlan enabled cannot be placed into a bridge.";
+            }
+          }
+          uses bridge-port-settings;
+        }
+        container wifi-station {
+          leaf interface {
+            type if:interface-ref;
+            must
+              " /if:interfaces/if:interface[if:name=current()/.]/wifi:wifi-config/wifi:mode = 'station' or
+               /if:interfaces/if:interface[if:name=current()/.]/wifi:wifi-config/wifi:mode = 'access-point-station'" {
+              error-message "Bridge member's WiFi interface is not configured as station or access-point-station.";
+            }
+            description
+              "The name of the wifi interface to add to the bridge.";
+          }
+          uses bridge-port-settings;
+        }
+      }
+      leaf stp-mode {
+        type enumeration {
+          enum "disabled";
+          enum "stp";
+        }
+        default "stp";
+      }
+      leaf ageing-time {
+        type uint32 {
+          range "10..1000000";
+        }
+        default "300";
+        units "seconds";
+        description
+          "The timeout period in seconds for aging out
+           dynamically-learned forwarding information.";
+      }
+      leaf max-age {
+        type uint32 {
+          range "6..40";
+        }
+        default "20";
+        units "seconds";
+        description
+          "The value that all bridges use for MaxAge when this
+           bridge is acting as the root.";
+      }
+      leaf hello-time {
+        type uint32 {
+          range "1..10";
+        }
+        default "2";
+        units "seconds";
+        description
+          "The value that all bridges use for HelloTime when this
+           bridge is acting as the root";
+      }
+      leaf forward-delay {
+        type uint32 {
+          range "4..30";
+        }
+        default "15";
+        units "seconds";
+        description
+          "The value that all bridges use for ForwardDelay when
+           this bridge is acting as the root";
+      }
+      leaf bridge-priority {
+        type uint32 {
+          range "0..65535";
+        }
+        default "32768";
+        description
+          "The value of the write-able portion of the Bridge ID
+           (i.e., the first two octets of the (8 octet long) Bridge
+           ID).  On bridges supporting IEEE 802.1t or IEEE 802.1w,
+           permissible values are 0-61440, in steps of 4096.";
+      }
+    }
+  }
+}

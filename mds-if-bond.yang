@@ -1,0 +1,159 @@
+module mds-if-bond {
+  namespace "com:gemds:mds-if-bond";
+  prefix mds_bond;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-if-ieee80211 {
+    prefix mds_wifi;
+  }
+  import mds-if-vlan {
+    prefix mds_vlan;
+  }
+  import mds-if-gre {
+    prefix mds_gre;
+  }
+  import mds-if-bridge {
+    prefix mds_bridge;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     a bond interface used to aggregate multiple network interfaces 
+     into a single logical bonded interface for providing link redundancy
+     and other features as found in MDS products.
+     
+     Copyright (c) 2014 by GE MDS LLC. All rights reserved.";
+
+  revision 2014-10-09 {
+    description
+      "Changed primary-member to be a leaf-ref to ../member/interface";
+  }
+  revision 2014-09-03 {
+    description
+      "Initial revision.";
+  }
+
+  identity bond {
+    base if:interface-type;
+    description
+      "Bond Interface";
+  }
+
+  typedef bond-type {
+    type enumeration {
+      enum "active-backup" {
+        description
+          "Only one member in the bond is active.  A different member becomes active if, 
+           and only if, the active member fails.";
+      }
+    }
+    description
+      "Mode of the bond interface operation";
+  }
+
+  typedef member-monitor-type {
+    type enumeration {
+      enum "link-state" {
+        description
+          "Member interface status is monitored locally by checking link state";
+      }
+    }
+    description
+      "Method of monitoring member link status";
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_bond:bond'";
+    description
+      "Add support for bond interfaces";
+    container bond-config {
+      presence "Bond configuration";
+      leaf mode {
+        type bond-type;
+        mandatory true;
+      }
+      list member {
+        key "interface";
+        min-elements 1;
+        leaf interface {
+          type if:interface-ref;
+          must "not(. = current ()/../../../if:name)" {
+            error-message "A bond interface cannot be a member of itself";
+          }
+          must
+            "not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_cell:cellular') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_cell:cellular-pdn') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_sd:sdms') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_sd:sd-nic') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_bridge:bridge') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_vlan:vlan') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_loopback:loopback') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_wifi:wifi' and
+                 /if:interfaces/if:interface[if:name = current()/.]/mds_wifi:wifi-config/mds_wifi:mode = 'mds_wifi:access-point') and
+             not(/if:interfaces/if:interface[if:name = current()/.]/if:type = 'mds_gre:gre' and 
+                 /if:interfaces/if:interface[if:name = current()/.]/mds_gre:gre-config/mds_gre:mode = 'mds_gre:ip-over-gre')" {
+            error-message "This type of device cannot be added to a bond interface.";
+          }
+          must "not(.= (/if:interfaces/if:interface[if:name != current()/../../../if:name]/bond-config/member/interface))" {
+            error-message "An interface can only be a member of one bond interface.";
+          }
+          must "not(.= (/if:interfaces/if:interface[if:name != current()/../../../if:name]/mds_bridge:bridge-settings/mds_bridge:members/mds_bridge:port/mds_bridge:interface))" {
+            error-message "An interface cannot be a member of both bridge and bond interface.";
+          }
+          must "not(.= (/if:interfaces/if:interface[if:name != current()/../../../if:name]/mds_bridge:bridge-settings/mds_bridge:members/mds_bridge:wifi-station/mds_bridge:interface))" {
+            error-message "A Wi-Fi interface in station mode cannot be a member of both bridge and bond interface.";
+          }
+          must
+            "not(/if:interfaces/if:interface[if:name = current()/.]/mds_vlan:vlan-mode) or 
+             /if:interfaces/if:interface[if:name = current()/.]/mds_vlan:vlan-mode = 'none'" {
+            error-message "An interface with vlan enabled cannot be added to a bond interface.";
+          }
+        }
+      }
+      leaf member-monitor-mode {
+        type member-monitor-type;
+        default "link-state";
+      }
+      leaf member-link-up-delay {
+        when "../member-monitor-mode = 'link-state'";
+        type uint16;
+        default "5";
+        description
+          "Time interval (secs) to wait before enabling the
+           member after a link recovery has been detected.";
+      }
+      leaf member-link-down-delay {
+        when "../member-monitor-mode = 'link-state'";
+        type uint16;
+        default "5";
+        description
+          "Time interval (secs) to wait before disabling the
+           member after a link failure has been detected.";
+      }
+      leaf primary-member {
+        when "../mode = 'active-backup'";
+        mandatory true;
+        must ". = current ()/../member/interface" {
+          error-message "The primary interface must be one of the members of this interface.";
+        }
+        type leafref {
+          path "../member/interface";
+        }
+        description
+          "An interface that will be made the active member when it is up.";
+      }
+    }
+  }
+}

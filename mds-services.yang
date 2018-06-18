@@ -1,0 +1,65 @@
+module mds-services {
+  namespace "com:gemds:mds-services";
+  prefix serv;
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     configuring system services.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2014-06-06 {
+    description
+      "Added a not running state.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-05-24 {
+    description
+      "Initial revision.";
+  }
+
+  container services {
+    description
+      "Services which are configurable on this system";
+    list services-status {
+      config false;
+      key "name";
+      leaf name {
+        type string;
+        description
+          "Service Name.";
+      }
+      leaf status {
+        description
+          "The current state of the service";
+        type enumeration {
+          enum "running" {
+            value 0;
+          }
+          enum "disabled" {
+            value 1;
+          }
+          enum "error" {
+            value 2;
+          }
+          enum "not-running" {
+            value 3;
+          }
+        }
+      }
+    }
+  }
+}

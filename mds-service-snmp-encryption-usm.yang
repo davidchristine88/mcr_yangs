@@ -1,0 +1,34 @@
+module mds-service-snmp-encryption-usm {
+  namespace "http://tailf.com/ns/encryption-usm";
+  prefix snmp-encryption-usm;
+
+  import SNMP-USER-BASED-SM-MIB {
+    prefix USM;
+  }
+
+  grouping keys {
+    leaf password {
+      type USM:KeyChange;
+      description
+        "Localized key.";
+    }
+    leaf key {
+      type USM:KeyChange;
+      description
+        "Authentication key";
+    }
+  }
+
+  augment "/USM:SNMP-USER-BASED-SM-MIB/USM:usmUserTable/USM:usmUserEntry" {
+    container usm-crypto {
+      description
+        "Stores password-encryption key info of User Based Access Module";
+      container auth {
+        uses keys;
+      }
+      container priv {
+        uses keys;
+      }
+    }
+  }
+}

@@ -1,0 +1,144 @@
+module mds-tamper-detection {
+  namespace "com:gemds:tamper-detection";
+  prefix mds_tamper_detection;
+
+  import ietf-system {
+    prefix sys;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     tamper detection feature.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2013-10-22 {
+    description
+      "Change trigger threshold structure.";
+  }
+  revision 2013-09-12 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2013-09-12 {
+    description
+      "Initial revision.";
+  }
+
+  feature tamper-detection {
+    description
+      "Indicates device has tamper detection capability";
+  }
+
+  feature tamper-detection-magnetometer {
+    description
+      "Indicates device has tamper detection capability";
+  }
+
+  grouping magnetometer-coordinates {
+    leaf x-axis {
+      type int16 {
+        range "-20000 .. 20000";
+      }
+      default "0";
+      description
+        "The raw x coordinate value.";
+    }
+    leaf y-axis {
+      type int16 {
+        range "-20000 .. 20000";
+      }
+      default "0";
+      description
+        "The raw y coordinate value.";
+    }
+    leaf z-axis {
+      type int16 {
+        range "-20000 .. 20000";
+      }
+      default "0";
+      description
+        "The raw z coordinate value.";
+    }
+  }
+
+  augment "/sys:system" {
+    container tamper-detection {
+      if-feature tamper-detection;
+      container magnetometer {
+        if-feature tamper-detection-magnetometer;
+        leaf enabled {
+          type boolean;
+          default "false";
+          description
+            "Indicates whether magnetometer is enabled for use.  Enabling magnetometer
+             performs a calibration to zero the current coordinate values.";
+        }
+        container alarm {
+          config false;
+          leaf state {
+            type boolean;
+            default "false";
+            description
+              "Indicates whether alarm was triggered.  Manually cleared";
+          }
+        }
+        container calibration-offsets {
+          config false;
+          uses magnetometer-coordinates;
+          description
+            "Calibrated coordinates, determined when magnetometer tamper is enabled.";
+        }
+        container current-offsets {
+          config false;
+          uses magnetometer-coordinates {
+            refine "x-axis";
+            refine "y-axis";
+            refine "z-axis";
+          }
+          description
+            "Current coordinates, offset from calibrated values.";
+        }
+        container trigger-thresholds {
+          leaf x-axis {
+            type int16 {
+              range "25..2000";
+            }
+            default "50";
+            description
+              "The alarm trigger threshold for x-axis.";
+          }
+          leaf y-axis {
+            type int16 {
+              range "25..2000";
+            }
+            default "50";
+            description
+              "The alarm trigger threshold for y-axis.";
+          }
+          leaf z-axis {
+            type int16 {
+              range "25..2000";
+            }
+            default "50";
+            description
+              "The alarm trigger threshold for z-axis.";
+          }
+          description
+            "Thresholds for current axis values that will trigger an event. These
+             are treated as absolute values (e.g. change in either direction).";
+        }
+      }
+    }
+  }
+}

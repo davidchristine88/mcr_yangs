@@ -1,0 +1,547 @@
+module mds-if-ieee80211 {
+  namespace "com:gemds:mds-if-ieee80211";
+  prefix mds_wifi;
+
+  import ietf-system {
+    prefix sys;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-system {
+    prefix mdssys;
+  }
+  import mds-if-ieee80211-status {
+    prefix mds_wifi_status;
+  }
+  import mds-certmgr {
+    prefix mdscert;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     IEEE 802.11 Wi-Fi devices as found on MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2017-10-27 {
+    description
+      "Added roaming container.";
+  }
+  revision 2016-06-13 {
+    description
+      "Increased max power to 20 dBm.";
+  }
+  revision 2015-04-13 {
+    description
+      "Changed path for certificates.";
+  }
+  revision 2015-03-27 {
+    description
+      "Added password encryption.";
+  }
+  revision 2014-08-26 {
+    description
+      "Removed obsoleted station-bridge wifi mode.";
+  }
+  revision 2014-06-18 {
+    description
+      "Moved status from common to status yang file.";
+  }
+  revision 2013-10-22 {
+    description
+      "Move to standard IETF interfaces-state table.";
+  }
+  revision 2013-09-23 {
+    description
+      "changed validation from a mandatory and to a must statement.";
+  }
+  revision 2013-08-09 {
+    description
+      "Added wpa2-personal-mixed and wpa2-enterprise-mixed as
+       access point privacy modes.";
+  }
+  revision 2013-07-12 {
+    description
+      "Changed wifi-config operation-mode default to 80211n.";
+  }
+  revision 2013-06-28 {
+    description
+      "Changed valid range of wifi channel.";
+  }
+  revision 2013-06-21 {
+    description
+      "Obsolete station-bridge";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-02-10 {
+    description
+      "Initial revision.";
+  }
+
+  identity wifi {
+    base if:interface-type;
+    description
+      "IEEE 802.11 WiFi Radio";
+  }
+
+  grouping privacy {
+    leaf privacy-mode {
+      type enumeration {
+        enum "none";
+        enum "wpa-personal";
+        enum "wpa-enterprise";
+        enum "wpa2-personal";
+        enum "wpa2-enterprise";
+        enum "wpa2-personal-mixed";
+        enum "wpa2-enterprise-mixed";
+      }
+      default "none";
+      description
+        "The privacy mode to use on this interface.";
+      must
+        "(not (current()/. = 'wpa-personal') and
+          not (current()/. = 'wpa2-personal') and
+          not (current()/. = 'wpa2-personal-mixed')) or
+         ../psk-config/psk" {
+        error-message "wpa/wpa2 personal modes require setting the psk";
+      }
+    }
+    container psk-config {
+      description
+        "Pre-Shared Key settings";
+      when
+        "../privacy-mode = 'wpa-personal' or
+         ../privacy-mode = 'wpa2-personal' or
+         ../privacy-mode = 'wpa2-personal-mixed'";
+      leaf encryption {
+        type enumeration {
+          enum "ccmp";
+          enum "tkip";
+          enum "ccmp-tkip";
+        }
+        default "ccmp";
+        description
+          "The encryption mode to use";
+      }
+      leaf key-mgmt {
+        type enumeration {
+          enum "wpa-psk";
+          enum "wpa-psk-sha256";
+        }
+        default "wpa-psk";
+        description
+          "The type of pre-shared key to use";
+      }
+      leaf psk {
+        type aes-cfb-128-encrypted-string {
+          length "8..128";
+        }
+        description
+          "The Pre-Shared Key";
+      }
+    }
+    container eap-config {
+      when
+        "../privacy-mode = 'wpa-enterprise' or
+         ../privacy-mode = 'wpa2-enterprise' or
+         ../privacy-mode = 'wpa2-enterprise-mixed'";
+      leaf encryption {
+        type enumeration {
+          enum "ccmp";
+          enum "tkip";
+          enum "ccmp-tkip";
+        }
+        default "ccmp";
+        description
+          "The type of compression used by the EAP connection";
+      }
+      leaf key-mgmt {
+        type enumeration {
+          enum "wpa-eap";
+          enum "wpa-eap-sha256";
+        }
+        default "wpa-eap";
+        description
+          "The type of key used by the EAP connection";
+      }
+      leaf eap-method {
+        type enumeration {
+          enum "eap-tls";
+        }
+        default "eap-tls";
+        description
+          "The type of EAP connection to use";
+      }
+    }
+    leaf ieee80211w {
+      type enumeration {
+        enum "disabled";
+        enum "optional";
+        enum "required";
+      }
+      default "disabled";
+      description
+        "802.11w management frame protection";
+    }
+  }
+
+  grouping pki {
+    leaf cert-type {
+      type enumeration {
+        enum "rsa" {
+          description
+            "PKI using RSA keys and certificates";
+        }
+        enum "ecdsa" {
+          description
+            "PKI using ECDSA keys and certificates";
+        }
+      }
+      mandatory true;
+      description
+        "certificate type";
+    }
+    leaf cert-id {
+      type string;
+      mandatory true;
+      description
+        "certificate identifier";
+    }
+    leaf key-id {
+      type string;
+      mandatory true;
+      description
+        "private key identifier";
+    }
+    leaf ca-cert-id {
+      type string;
+      mandatory true;
+      description
+        "ca-certificate chain identifier";
+    }
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_wifi:wifi'";
+    container wifi-config {
+      presence "Wi-Fi Configuration";
+      must "not (../if:type = 'mds_wifi:wifi') or mode" {
+        error-message "wifi-config/mode must be configured for wifi devices";
+      }
+      must "not (mode='station') or station-config" {
+        error-message "station-config must be configured when mode is station";
+      }
+      must "not (mode='access-point') or ap-config" {
+        error-message "ap-config must be configured when mode is access-point";
+      }
+      must "not (mode='access-point-station') or (ap-config and station-config)" {
+        error-message "ap-config and station-config must be configured when mode is access-point-station";
+      }
+      leaf mode {
+        type enumeration {
+          enum "station";
+          enum "access-point";
+          enum "access-point-station";
+        }
+        description
+          "The mode to operate the Wi-Fi interface";
+      }
+      leaf distance {
+        type uint32 {
+          range "0..114750";
+        }
+        units "meters";
+        description
+          "The maximum distance of the transmission path.
+           When not explicitly set, default is 450m";
+      }
+      leaf tx-power {
+        type uint32;
+        units "dBm";
+        description
+          "The maximum transmission power.
+           When not explicitly set, default is:
+           W51 modem: 16dBm in 2.4Ghz (bgn).
+           W52 modem: 26dBm in 2.4Ghz (bgn) and 23dBm in 5Ghz (a/an).";
+      }
+      leaf mimo-mode {
+        type enumeration {
+          enum "1x1" {
+            description
+              "Transmit/Receive on antenna CH0 only.";
+          }
+          enum "2x2" {
+            description
+              "Transmit/Receive on antenna CH0 and CH1.";
+          }
+        }
+        description
+          "Specifies the number of transmit/receive antennas.
+           When not explicitly specified, default is:
+           W51 modem: 1x1 mode
+           W52 modem: 2x2 mode";
+      }
+      container station-config {
+        when "../mode = 'station' or ../mode = 'access-point-station'";
+        presence "Station Configuration";
+        list ap {
+          key "ssid";
+          min-elements 1;
+          max-elements "10";
+          ordered-by user;
+          description
+            "List of configured access points to connect to.
+             Connection will be attempted in the order that
+             access points are defined in the list.";
+          must
+            "(not (privacy-mode = 'wpa-enterprise') and
+              not (privacy-mode = 'wpa2-enterprise') and
+              not (privacy-mode = 'wpa2-enterprise-mixed')) or
+              pki" {
+            error-message "PKI settings must be configured for wpa/wpa2 enterprise privacy";
+          }
+          leaf ssid {
+            type string {
+              length "1..32";
+            }
+          }
+          leaf enabled {
+            type boolean;
+            default "true";
+          }
+          uses privacy {
+            refine "ieee80211w" {
+              description
+                "802.11w management frame protection. The 'disabled' setting disables this feature.
+                 The 'optional' setting enables this station activate 802.11w for APs that support this feature, while still allowing this sttaion to connect to APs that donot support this feature.
+                 The 'required' setting requires this station to only connect to the APs that supports 802.11w";
+            }
+          }
+          container pki {
+            when
+              "../privacy-mode = 'wpa-enterprise' or
+               ../privacy-mode = 'wpa2-enterprise' or
+               ../privacy-mode = 'wpa2-enterprise-mixed'";
+            presence "PKI configuration";
+            uses pki {
+              refine "cert-type" {
+                mandatory true;
+              }
+            }
+          }
+          container roaming {
+            presence "Roaming";
+            leaf bgscan-signal-threshold {
+              type int8;
+              units "dBm";
+              default "-75";
+              description
+                "Background scan signal threshold.";
+            }
+            leaf bgscan-short-interval {
+              type uint32;
+              units "seconds";
+              default "120";
+              description
+                "Background scan is performed every short interval if signal
+                 level is below the signal threshold.";
+            }
+            leaf bgscan-long-interval {
+              type uint32;
+              units "seconds";
+              default "900";
+              description
+                "Background scan is performed every long interval if signal
+                 level is above the signal threshold.";
+            }
+          }
+        }
+      }
+      container ap-config {
+        presence "Access Point Configuration";
+        when "../mode = 'access-point' or ../mode = 'access-point-station'";
+        leaf operation-mode {
+          type enumeration {
+            enum "80211a";
+            enum "80211b";
+            enum "80211g";
+            enum "80211n";
+            enum "80211an";
+          }
+          default "80211n";
+          description
+            "The IEEE 802.11 mode to operate in.";
+        }
+        leaf channel {
+          type uint32;
+          default "6";
+          description
+            "The IEEE 802.11 channel number to operate on:
+             2.4Ghz (HT20): 1-11
+             2.4Ghz (HT40-): 5-11
+             2.4Ghz (HT40+): 1-7
+             5Ghz (HT20): 36,40,44,48,149,153,157,161,165
+             5Ghz (HT40-): 40,48,153,161
+             5Ghz (HT40+): 36,44,149,157
+             Set to 0 for automatic channel selection.";
+        }
+        leaf channel-width {
+          type enumeration {
+            enum "HT20" {
+              description
+                "20 Mhz channels only.";
+            }
+            enum "HT40-" {
+              description
+                "Both 20Mhz and 40Mhz channels with secondary channel below primary channel.";
+            }
+            enum "HT40+" {
+              description
+                "Both 20Mhz and 40Mhz channels with secondary channel above primary channel.";
+            }
+          }
+          default "HT20";
+          description
+            "Supported channel widths for 802.11n/an mode";
+        }
+        leaf dtim-period {
+          type uint32 {
+            range "1..255";
+          }
+          default "2";
+          description
+            "DTIM (delivery traffic information message) period.  The number
+             of beacons between DTIMs.";
+        }
+        leaf rts-threshold {
+          type uint32 {
+            range "0..2347";
+          }
+          default "2347";
+          description
+            "RTS/CTS threshold; Default 2347 = disabled";
+        }
+        leaf fragm-threshold {
+          type uint32 {
+            range "256..2346";
+          }
+          default "2346";
+          description
+            "Fragmentation threshold; Default 2346 = disabled";
+        }
+        list ap {
+          key "ssid";
+          description
+            "The list of configured access point SSIDs.";
+          min-elements 1;
+          max-elements "16";
+          ordered-by user;
+          must
+            "(not (privacy-mode = 'wpa-enterprise') and
+              not (privacy-mode = 'wpa2-enterprise') and
+              not (privacy-mode = 'wpa2-enterprise-mixed')) or
+              radius-server" {
+            error-message "radius-server must be configured for wpa/wpa2 enterprise privacy";
+          }
+          leaf ssid {
+            type string {
+              length "1..32";
+            }
+            description
+              "The SSID of this wifi access point.";
+          }
+          leaf broadcast-ssid {
+            type boolean;
+            default "true";
+            description
+              "If true, the SSID will be broadcast.";
+          }
+          leaf station-isolation {
+            type boolean;
+            default "false";
+            description
+              "If true, traffic between stations is prevented. Otherwise, it is allowed.";
+          }
+          leaf station-max {
+            type uint32;
+            description
+              "The maximum number of clients that will be allowed
+               to connect to this access point.";
+          }
+          leaf station-timeout {
+            type uint32 {
+              range "1..300";
+            }
+            units "seconds";
+            default "300";
+            description
+              "The number of seconds a station may be inactive before the
+               access point will verify that the station is still within
+               range.";
+          }
+          leaf beacon-interval {
+            type uint32 {
+              range "15..65535";
+            }
+            units "seconds";
+            default "100";
+            description
+              "The number of seconds between WiFi beacon transmissions.";
+          }
+          uses privacy {
+            refine "ieee80211w" {
+              description
+                "802.11w management frame protection. The 'disabled' setting disables this feature.
+                 The 'optional' setting enables mixed use, enabling 802.11w for clients that support it,
+                 while still allowing clients that donot support 802.11w to join the network. The 'required'
+                 setting allows only clients that support 802.11w to join the network.";
+            }
+          }
+          leaf radius-server {
+            when
+              "../privacy-mode = 'wpa-enterprise' or
+               ../privacy-mode = 'wpa2-enterprise' or
+               ../privacy-mode = 'wpa2-enterprise-mixed'";
+            type leafref {
+              path "/sys:system/mdssys:mds-radius/mdssys:servers/mdssys:name";
+            }
+            description
+              "Radius server for eap authentication";
+          }
+        }
+      }
+    }
+  }
+  augment "/if:interfaces-state/if:interface" {
+    when "if:type = 'mds_wifi:wifi'";
+    container wifi-status {
+      config false;
+      uses mds_wifi_status:wifi-status {
+        refine "ap-status";
+        refine "station-status";
+      }
+    }
+  }
+
+  typedef aes-cfb-128-encrypted-string {
+    type string;
+    description
+      "The aes-cfb-128-encrypted-string works exactly like
+       des3-cbc-encrypted-string but AES/128bits in CFB mode is used to
+       encrypt the string.  The prefix for encrypted values is '$4$'.";
+  }
+}

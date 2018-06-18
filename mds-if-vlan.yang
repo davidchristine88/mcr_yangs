@@ -1,0 +1,150 @@
+module mds-if-vlan {
+  namespace "com:gemds:mds-if-vlan";
+  prefix mds_vlan;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-ip {
+    prefix ip;
+  }
+  import mds-if-ieee80211 {
+    prefix wifi;
+  }
+  import mds-if-gre {
+    prefix gre;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     VLANs as found on MDS products.
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-03-11 {
+    description
+      "Added ability to apply VLAN to GRE interfaces (in ethernet-over-gre mode).";
+  }
+  revision 2014-01-17 {
+    description
+      "Added ability to apply VLAN to mds_nx:nx interfaces.";
+  }
+  revision 2013-10-22 {
+    description
+      "Move to standard IETF interfaces-state table.";
+  }
+  revision 2013-03-01 {
+    description
+      "Initial revision.";
+  }
+
+  identity vlan {
+    base if:interface-type;
+    description
+      "VLAN Interface";
+  }
+
+  typedef vlan-id {
+    type uint16 {
+      range "1..4094";
+    }
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_vlan:vlan'";
+    container vlan-config {
+      description
+        "VLAN configuration settings";
+      must "not (../if:type = 'mds_vlan:vlan') or vlan-id" {
+        error-message "vlan-id must be set.";
+      }
+      leaf vlan-id {
+        type vlan-id;
+        must "not( /if:interfaces/if:interface[if:name != current()/../../if:name]/vlan-config/vlan-id = .)" {
+          error-message "ID is already applied on another VLAN";
+        }
+        description
+          "The ID of this vlan";
+      }
+      leaf native-vlan {
+        type boolean;
+        default "false";
+        must ". = 'false' or not(/if:interfaces/if:interface[if:name != current()/../../if:name]/vlan-config/native-vlan = 'true')" {
+          error-message "There can be only one vlan defined as being the native-vlan";
+        }
+        description
+          "If true, this is the native vlan of this device.
+           Native VLAN packets will not egress as tagged packets";
+      }
+    }
+  }
+
+  grouping vlan-member-settings {
+    leaf vlan-mode {
+      type enumeration {
+        enum "none";
+        enum "access";
+        enum "trunk";
+      }
+      must "(. = 'none') or ( (. = 'trunk') and ../vlans) or ( (. = 'access') and ../vlan)" {
+        error-message "A vlan must be specified when vlan-mode is enabled";
+      }
+      default "none";
+    }
+    leaf-list vlans {
+      when "../vlan-mode = 'trunk'";
+      must "/if:interfaces/if:interface[if:name=current()/.]/if:type = 'mds_vlan:vlan'" {
+        error-message "Interface must be of type vlan";
+      }
+      type if:interface-ref;
+      description
+        "The vlans this trunk-port interface is a member of";
+    }
+    leaf vlan {
+      when "../vlan-mode = 'access'";
+      must "/if:interfaces/if:interface[if:name=current()/.]/if:type = 'mds_vlan:vlan'" {
+        error-message "Interface must be of type vlan";
+      }
+      type if:interface-ref;
+      description
+        "The vlan this access-port interface is a member of";
+    }
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mdsif:ethernet' or if:type = 'mds_nx:nx' or if:type = 'mds_ln:ln' or if:type = 'mds_sd:sdms' or if:type = 'mds_gre:gre' or if:type = 'mds_lw:lw' ";
+    uses vlan-member-settings {
+      refine "vlan-mode" {
+        must "not(current()/../if:type = 'mdsif:ethernet') or not(current()/../if:type = 'mds_nx:nx') or not(current()/../if:type = 'mds_ln:ln') or not(current()/../if:type = 'mds_lw:lw') or not(current()/../if:type = 'mds_sd:sdms') or not(current()/../if:type = 'mds_gre:gre') or (. = 'none') or ( not(../ip:ipv4/ip:enabled = 'true') and not(../ip:ipv6/ip:enabled = 'true') )" {
+          error-message
+            "IPv4/6 settings cannot be applied when vlan-mode is 'access' or 'trunk'.
+             Apply IPs directly to the vlan interface.";
+        }
+      }
+    }
+  }
+  augment "/if:interfaces/if:interface/wifi:wifi-config/wifi:ap-config/wifi:ap" {
+    uses vlan-member-settings {
+      refine "vlan-mode" {
+        must "(. != 'trunk')" {
+          error-message "APs cannot be VLAN trunks";
+        }
+        must "(. = 'none') or ( not(../../../../ip:ipv4/ip:enabled) and not(../../../../ip:ipv6/ip:enabled) )" {
+          error-message
+            "IPv4/6 settings cannot be applied when vlan-mode is 'access'.
+             Apply IPs directly to the vlan interface.";
+        }
+      }
+    }
+  }
+}

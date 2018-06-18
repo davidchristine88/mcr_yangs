@@ -1,0 +1,114 @@
+module mds-if-gre {
+  namespace "com:gemds:mds-if-gre";
+  prefix mds_gre;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+  import ietf-inet-types {
+    prefix inet;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     Generic Routing Encapsulation (GRE) tunnel interfaces as 
+     found on MDS products.
+     
+     Copyright (c) 2014 by GE MDS LLC. All rights reserved.";
+
+  revision 2016-10-11 {
+    description
+      "Added IPv6 support.";
+  }
+  revision 2015-11-04 {
+    description
+      "Add default of 64 to ttl.";
+  }
+  revision 2014-08-07 {
+    description
+      "Initial revision.";
+  }
+
+  identity gre {
+    base if:interface-type;
+    description
+      "GRE tunnel Interface";
+  }
+
+  typedef gre-mode {
+    type enumeration {
+      enum "ip-over-gre" {
+        description
+          "The following connectivity is available:
+           a. IPv4 connectivity (Layer 3) over IPv4 GRE tunnel
+           b. IPv4 connectivity (Layer 3) over IPv6 GRE tunnel
+           c. IPv6 connectivity (Layer 3) over IPv4 GRE tunnel
+           d. IPv6 connectivity (Layer 3) over IPv6 GRE tunnel";
+      }
+      enum "ethernet-over-gre" {
+        description
+          "Ethernet connectivity (Layer 2) over GRE tunnel";
+      }
+    }
+    description
+      "Type of GRE tunnel";
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_gre:gre'";
+    description
+      "Add support for GRE tunnel interfaces";
+    container gre-config {
+      presence "GRE configuration";
+      must
+        "(not(/if:interfaces/if:interface[if:name != current()/../if:name]/gre-config/mode = mode) or
+         not(/if:interfaces/if:interface[if:name != current()/../if:name]/gre-config/src-address = src-address) or
+         not(/if:interfaces/if:interface[if:name != current()/../if:name]/gre-config/dst-address = dst-address) or
+         not(/if:interfaces/if:interface[if:name != current()/../if:name]/gre-config/key = key))" {
+        error-message "duplicate configuration exists on another GRE device";
+      }
+      must "key or src-address != '0.0.0.0' or dst-address != '0.0.0.0'" {
+        error-message "A key must be configured if both src and dst address are 0.0.0.0.";
+      }
+      leaf mode {
+        type gre-mode;
+        mandatory true;
+        description
+          "Type of GRE tunnel";
+      }
+      leaf src-address {
+        type inet:ip-address;
+        mandatory true;
+        description
+          "tunnel source address";
+      }
+      leaf dst-address {
+        type inet:ip-address;
+        mandatory true;
+        description
+          "tunnel destination address";
+      }
+      leaf key {
+        type uint32;
+        description
+          "tunnel key (a numeric value). This must match the one configured on the peer";
+      }
+      leaf ttl {
+        type uint8;
+        default "64";
+        description
+          "tunnel packet time-to-live";
+      }
+    }
+  }
+}

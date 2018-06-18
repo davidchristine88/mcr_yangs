@@ -1,0 +1,238 @@
+module cee {
+  namespace "org:mitre:cee";
+  prefix cee;
+
+  import ietf-inet-types {
+    prefix inet;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a the YANG definitions for CEE v1.0-beta1
+     core profile events
+     
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-09-05 {
+    description
+      "Initial revision.";
+  }
+
+  grouping src-dst-object {
+    leaf ipv4 {
+      type inet:ipv4-address;
+    }
+    leaf ipv6 {
+      type inet:ipv6-address;
+    }
+    leaf port {
+      type inet:port-number;
+    }
+    leaf host {
+      type string;
+    }
+  }
+
+  grouping syslog-object {
+    leaf fac {
+      type uint32;
+    }
+    leaf pri {
+      type uint32;
+    }
+    leaf ver {
+      type uint32;
+    }
+    leaf tag {
+      type string;
+    }
+  }
+
+  grouping file-object {
+    leaf hashmd5 {
+      type string;
+    }
+    leaf line {
+      type uint32;
+    }
+    leaf mode {
+      type string;
+    }
+    leaf name {
+      type string;
+    }
+    leaf path {
+      type string;
+    }
+    leaf perm {
+      type string;
+    }
+    leaf size {
+      type uint32;
+    }
+  }
+
+  grouping user-object {
+    leaf domain {
+      type string;
+    }
+    leaf gid {
+      type string;
+    }
+    leaf group {
+      type string;
+    }
+    leaf id {
+      type string;
+    }
+    leaf name {
+      type string;
+    }
+  }
+
+  grouping app-object {
+    leaf name {
+      type string;
+    }
+    leaf vend {
+      type string;
+    }
+    leaf ver {
+      type string;
+    }
+  }
+
+  grouping proc-object {
+    leaf id {
+      type string;
+    }
+    leaf name {
+      type string;
+    }
+    leaf tid {
+      type uint32;
+    }
+  }
+
+  grouping cee-event-object {
+    leaf hostname {
+      type string;
+      mandatory true;
+    }
+    leaf pname {
+      type string;
+      mandatory true;
+    }
+    leaf time {
+      type string;
+      mandatory true;
+    }
+    leaf action {
+      type string;
+    }
+    leaf domain {
+      type string;
+    }
+    leaf object {
+      type string;
+    }
+    leaf service {
+      type string;
+    }
+    leaf status {
+      type string;
+    }
+    container app {
+      uses app-object;
+    }
+    leaf appname {
+      type string;
+    }
+    leaf auid {
+      type string;
+    }
+    leaf cmd {
+      type string;
+    }
+    container dst {
+      uses src-dst-object;
+    }
+    leaf egid {
+      type string;
+    }
+    leaf euid {
+      type string;
+    }
+    container file {
+      uses file-object;
+    }
+    leaf ipv4 {
+      type inet:ipv4-address;
+    }
+    leaf ipv6 {
+      type inet:ipv6-address;
+    }
+    leaf msg {
+      type string;
+    }
+    leaf msgid {
+      type string;
+    }
+    leaf pid {
+      type string;
+    }
+    leaf pri {
+      type string;
+    }
+    container proc {
+      uses proc-object;
+    }
+    leaf sev {
+      type uint32;
+    }
+    container src {
+      uses src-dst-object;
+    }
+    leaf subsys {
+      type string;
+    }
+    container syslog {
+      uses syslog-object;
+    }
+    leaf tid {
+      type uint32;
+    }
+    leaf uid {
+      type string;
+    }
+    container user {
+      uses user-object;
+    }
+    leaf username {
+      type string;
+    }
+    leaf vend {
+      type string;
+    }
+    leaf ver {
+      type string;
+    }
+  }
+
+  notification cee-event {
+    uses cee-event-object;
+  }
+}

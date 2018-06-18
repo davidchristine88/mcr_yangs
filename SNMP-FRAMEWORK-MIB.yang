@@ -1,0 +1,103 @@
+module SNMP-FRAMEWORK-MIB {
+  namespace "http://tail-f.com/ns/mibs/SNMP-FRAMEWORK-MIB/200210140000Z";
+  prefix SNMP_FRAMEWORK_MIB;
+
+  revision 2002-10-14 {
+    description
+      "";
+  }
+
+  container SNMP-FRAMEWORK-MIB {
+    config false;
+    container snmpEngine {
+      leaf snmpEngineID {
+        type SnmpEngineID;
+        config false;
+      }
+      leaf snmpEngineBoots {
+        type snmpEngineBootsType;
+        config false;
+      }
+      leaf snmpEngineTime {
+        type snmpEngineTimeType;
+        config false;
+      }
+      leaf snmpEngineMaxMessageSize {
+        type snmpEngineMaxMessageSizeType;
+        config false;
+      }
+    }
+  }
+
+  typedef SnmpEngineID {
+    type hex-list {
+      pattern "(((([0-9A-Fa-f]{2}):){4,31})([0-9A-Fa-f]{2}))";
+    }
+  }
+
+  typedef SnmpSecurityModel {
+    type int32 {
+      range "0 .. 2147483647";
+    }
+  }
+
+  typedef SnmpMessageProcessingModel {
+    type int32 {
+      range "0 .. 2147483647";
+    }
+  }
+
+  typedef SnmpSecurityLevel {
+    type enumeration {
+      enum "noAuthNoPriv" {
+        value 1;
+      }
+      enum "authNoPriv" {
+        value 2;
+      }
+      enum "authPriv" {
+        value 3;
+      }
+    }
+  }
+
+  typedef SnmpAdminString {
+    type string {
+      length "min .. 255";
+    }
+  }
+
+  typedef snmpEngineBootsType {
+    type int32 {
+      range "1 .. 2147483647";
+    }
+  }
+
+  typedef snmpEngineTimeType {
+    type int32 {
+      range "0 .. 2147483647";
+    }
+  }
+
+  typedef snmpEngineMaxMessageSizeType {
+    type int32 {
+      range "484 .. 2147483647";
+    }
+  }
+
+  typedef hex-list {
+    type string {
+      pattern "(([0-9a-fA-F]){2}(:([0-9a-fA-F]){2})*)?";
+    }
+    status deprecated;
+    description
+      "DEPRECATED: Use yang:hex-string instead.  There are no plans to remove
+       tailf:hex-list.
+       
+       A list of colon-separated hexa-decimal octets e.g. '4F:4C:41:71'.
+       
+       The statement tailf:value-length can be used to restrict the number
+       of octets.  Note that using the 'length' restriction limits the
+       number of characters in the lexical representation.";
+  }
+}

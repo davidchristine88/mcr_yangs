@@ -1,0 +1,500 @@
+module mds-if-nx {
+  namespace "com:gemds:netmanager";
+  prefix mds_nx;
+
+  import mds-certmgr {
+    prefix mdscert;
+  }
+  import ietf-interfaces {
+    prefix if;
+  }
+  import mds-if-bond {
+    prefix mds_bond;
+  }
+  import mds-if-nx-common {
+    prefix mds_nx_common;
+  }
+  import mds-if-nx-status {
+    prefix mds_nx_status;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "GE MDS";
+  description
+    "This module contains a collection of YANG definitions for
+     NX915 devices found in MDS products.
+     
+     Copyright (c) 2013 GE MDS.  All rights reserved.";
+
+  revision 2016-03-11 {
+    description
+      "Increased default value of unicast data-retries.";
+  }
+  revision 2015-08-14 {
+    description
+      "Set units to uniform style.";
+  }
+  revision 2015-04-13 {
+    description
+      "Changed path for certificates.";
+  }
+  revision 2015-03-27 {
+    description
+      "Moved some parameters common to narrowband out to mds-nx-common";
+  }
+  revision 2015-02-11 {
+    description
+      "Use encryption-protocol 1.0 by default.";
+  }
+  revision 2014-09-26 {
+    description
+      "Add option allow-retransmit.  This will prevent remote from remote traffic from being sent.";
+  }
+  revision 2014-05-29 {
+    description
+      "Refactor to suport SNMP, add ADR parameters.";
+  }
+  revision 2014-02-12 {
+    description
+      "Changed channel list frequencies to string type.";
+  }
+  revision 2014-02-04 {
+    description
+      "Made modifications to the active channels information";
+  }
+  revision 2014-01-27 {
+    description
+      "Added AP Information DB. Added remote and endpoint age time.
+       Updated description text fields.";
+  }
+  revision 2014-01-17 {
+    description
+      "Fix spelling of frequencies in help strings. Added Average
+       RSSI and Average LQI performace info to connected remotes DB.";
+  }
+  revision 2013-12-19 {
+    description
+      "Rework of DBs. Fixed NIC alarm values.";
+  }
+  revision 2013-12-13 {
+    description
+      "Updated pki container elements to use a reference to mdscert.";
+  }
+  revision 2013-11-21 {
+    description
+      "Added compression to the data model.";
+  }
+  revision 2013-11-07 {
+    description
+      "Complete refactor of the data model to include advanced 
+       configuration and standard naming conventions.";
+  }
+  revision 2013-11-04 {
+    description
+      "Added security parameters.";
+  }
+  revision 2013-10-22 {
+    description
+      "Move to standard IETF interfaces-state table. Fixed some 
+       descriptions.";
+  }
+  revision 2013-10-09 {
+    description
+      "Fixed spelling error and included support for automatic modem.";
+  }
+  revision 2013-09-23 {
+    description
+      "Moved enums to typedefs, changed a mandatory to a must statment, 
+       added active channels table, and deprecated hop_mask for 
+       avoided_frequencies";
+  }
+  revision 2013-08-29 {
+    description
+      "Added power and hop_set leafs.  Added the endpoints table.";
+  }
+  revision 2013-07-18 {
+    description
+      "Added data_retries.";
+  }
+  revision 2013-07-12 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2013-01-08 {
+    description
+      "Initial revision.";
+  }
+
+  feature orbit-mpr {
+    description
+      "This feature is advertised when the unit is a member of the
+       MDS Orbit MPR family.";
+  }
+
+  identity nx {
+    base if:interface-type;
+    description
+      "NX915 Radio";
+  }
+
+  identity nx-nic {
+    base if:interface-type;
+    description
+      "An individual NX radio card in a master station";
+  }
+
+  typedef hop-set-type {
+    type enumeration {
+      enum "a" {
+        description
+          "The first group of frequencies";
+      }
+      enum "b" {
+        description
+          "The second group of frequencies";
+      }
+      enum "c" {
+        description
+          "The third group of frequencies";
+      }
+      enum "d" {
+        description
+          "The fourth group of frequencies";
+      }
+      enum "e" {
+        description
+          "The fifth group of frequencies";
+      }
+      enum "f" {
+        description
+          "The sixth group of frequencies";
+      }
+      enum "auto" {
+        value 10;
+        description
+          "Automaticly selects the group with the most avaiable 
+           frequencies";
+      }
+    }
+    description
+      "Types of hop sets";
+  }
+
+  augment "/if:interfaces/if:interface" {
+    when "if:type = 'mds_nx:nx'";
+    description
+      "Add support for GE MDS NX interfaces";
+    container nx-config {
+      must "not (current()/../if:type = 'mds_nx:nx') or device-mode" {
+        error-message
+          "nx-config/device-mode must be configured for 
+           nx devices";
+      }
+      must "not (modem-mode='auto' and device-mode='access-point')" {
+        error-message "The access point must specify a specific modem";
+      }
+      must "not (current()/../if:name = /if:interfaces/if:interface[if:name != current()/../if:name]/mds_bond:bond-config/mds_bond:member/mds_bond:interface and device-mode='access-point')" {
+        error-message "NX in access-point mode cannot be added to a bond interface.";
+      }
+      presence "NX Configuration";
+      description
+        "The configuration of the GE MDS NX interface";
+      leaf modem-mode {
+        type mds_nx_common:modem-type;
+        default "500kbps";
+        description
+          "Controls the target throughput of the radio";
+      }
+      leaf device-mode {
+        type mds_nx_common:device-type;
+        description
+          "Sets the role the radio will assume in the network.";
+      }
+      leaf-list members {
+        if-feature orbit-mpr;
+        type if:interface-ref;
+        description
+          "The member NX Radio interfaces which compose this logical NX master station grouping";
+        must "/if:interfaces/if:interface[ if:name=current()/.]/if:type = 'mds_nx:nx-nic'" {
+          error-message "Only NX-NICs can be members of the NX device.";
+        }
+      }
+      uses mds_nx_common:nx-basic-parms;
+      leaf power {
+        type int8 {
+          range "20..30";
+        }
+        units "dBm";
+        default "30";
+        description
+          "The transmit power of the radio";
+      }
+      leaf radio-mode {
+        type enumeration {
+          enum "mac1" {
+            value 1;
+            description
+              "Sets the NIC to use MAC 1 profile";
+          }
+        }
+        default "mac1";
+        description
+          "Controls the operating mode of the NIC";
+      }
+      leaf dwell-time {
+        type uint16 {
+          range "10..400";
+        }
+        units "milliseconds";
+        default "50";
+        description
+          "Time spent on a channel";
+      }
+      leaf beacon-interval {
+        type uint16 {
+          range "10..300";
+        }
+        units "milliseconds";
+        default "150";
+        description
+          "Synchronization beacon transmit interval";
+      }
+      leaf hop-set {
+        type hop-set-type;
+        default "a";
+        description
+          "The hop set of the radio";
+      }
+      container security {
+        must "encryption='none' or security-mode!='none'" {
+          error-message
+            "Encryption requires a security mode other than
+             none.";
+        }
+        must "passphrase or security-mode!='psk'" {
+          error-message "PSK mode reqires a passphrase.";
+        }
+        description
+          "The security configuration of the interface";
+        uses mds_nx_common:nx-security-parms;
+        container pki {
+          description
+            "The public key infrastructure used by EAP-TLS";
+          leaf cert-id {
+            type string;
+            description
+              "certificate identifier";
+          }
+          leaf key-id {
+            type string;
+            description
+              "private key identifier";
+          }
+          leaf ca-cert-id {
+            type string;
+            description
+              "ca-certificate chain identifier";
+          }
+        }
+      }
+      container advanced-config {
+        description
+          "The advanced configuration of the interface";
+        leaf lna-state {
+          type enumeration {
+            enum "high-immunity" {
+              value 0;
+              description
+                "Better performance in high noise envirnoment";
+            }
+            enum "high-sensitivity" {
+              value 1;
+              description
+                "Better performance in low noise envirnoment";
+            }
+          }
+          default "high-sensitivity";
+          description
+            "Controls the low noise amplifier";
+        }
+        leaf-list avoided-frequencies {
+          type string;
+          max-elements "50";
+          description
+            "Frequencies that are not included in the hop pattern. Values must be a single frequency or a range (i.e. 903.1 or 910-912). 
+             Frequencies must be between 902.7 and 927.3 with at most 4 digits after the decimal point.";
+        }
+        leaf stale-packet-timeout {
+          type uint16;
+          units "milliseconds";
+          default "1500";
+          description
+            "If the MAC is unable to transmit a packet in this time, 
+             it will drop the packet.";
+        }
+        leaf propagation-delay {
+          type enumeration {
+            enum "20miles" {
+              value 0;
+              description
+                "Correction based on 20 mile speed of light delay";
+            }
+            enum "40miles" {
+              value 1;
+              description
+                "Correction based on 40 mile speed of light delay";
+            }
+            enum "60miles" {
+              value 2;
+              description
+                "Correction based on 60 mile speed of light delay";
+            }
+          }
+          default "40miles";
+          description
+            "Correction for the propagation delay of the RF signal.";
+        }
+        leaf mcast-repeat {
+          type uint8;
+          default "3";
+          description
+            "Number of times to repeat downstream broadcast and 
+             multicast data.";
+        }
+        leaf data-retries {
+          type uint8 {
+            range "0..15";
+          }
+          default "7";
+          description
+            "Number of times to retry unicast data before declaring NACK.";
+        }
+        leaf nic-id {
+          type uint16 {
+            range "0 | 400..500";
+          }
+          default "0";
+          description
+            "Manual overrides of the NIC identifier";
+        }
+        leaf gateway-id {
+          type uint16 {
+            range "0 | 400..max";
+          }
+          default "0";
+          description
+            "Manual overrides of the NIC's gateway identifier";
+        }
+        leaf fragment-threshold {
+          type uint16 {
+            range "0 | 50..1500";
+          }
+          default "0";
+          description
+            "Fragmentation threshold";
+        }
+        uses mds_nx_common:remote-db-mgmt {
+          refine "remote-age-time";
+        }
+        leaf adr-mode {
+          type enumeration {
+            enum "none" {
+              value 0;
+              description
+                "No adaptive data rate.";
+            }
+            enum "125-250kbps" {
+              value 1;
+              description
+                "Adaptive data rate between modems 125 and 250kbps.";
+            }
+            enum "500-1250kbps" {
+              value 2;
+              description
+                "Adaptive data rate between modems 500 and 1250kbps.";
+            }
+          }
+          default "none";
+          description
+            "Adaptive Data Rate will change the modem to attempt to get the best
+             throughput, for a given network.";
+        }
+        leaf adr-threshold {
+          type int8 {
+            range "-127..0";
+          }
+          default "-70";
+          description
+            "Adaptive Data Rate Threshold.  If signal is stronger
+             than threshold the faster data rate setting will be used.";
+        }
+        leaf encryption-protocol {
+          type enumeration {
+            enum "2.0" {
+              value 0;
+            }
+            enum "1.0" {
+              value 1;
+            }
+          }
+          default "1.0";
+          description
+            "Set this to 1.0 when migrating remote network to new security protocol";
+        }
+      }
+    }
+  }
+  augment "/if:interfaces-state/if:interface" {
+    when "if:type = 'mds_nx:nx' or if:type = 'mds_nx:nx-nic'";
+    description
+      "Add support for GE MDS NX interfaces";
+    container nx-status {
+      config false;
+      description
+        "The status of the GE MDS NX interface";
+      uses mds_nx_status:nx-status {
+        refine "link-status";
+        refine "ap-info";
+        refine "active-nic";
+        refine "connected-remotes";
+        refine "endpoints";
+        refine "routes";
+        refine "active-channels";
+      }
+      container test {
+        leaf test-mode-time {
+          type uint32;
+          units "minutes";
+          description
+            "The number of minutes left of test mode";
+        }
+        list spectrum-analyzer {
+          key "channel";
+          leaf channel {
+            type uint8;
+          }
+          leaf frequency {
+            type string;
+            units "MHz";
+          }
+          leaf current {
+            type int8;
+            description
+              "The power sampled on the channel";
+          }
+          leaf max-hold {
+            type int8;
+            description
+              "The strongest signal detected on the channel";
+          }
+          leaf average {
+            type int8;
+            description
+              "The average signal detected on the channel";
+          }
+        }
+      }
+    }
+  }
+}

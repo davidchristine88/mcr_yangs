@@ -1,0 +1,51 @@
+submodule mds-service-snmp-notification {
+  belongs-to mds-service-snmp {
+    prefix snmp;
+  }
+
+  import mds-services {
+    prefix serv;
+  }
+  include mds-service-snmp-common;
+  include mds-service-snmp-target;
+
+  reference
+    "RFC3413: Simple Network Management Protocol (SNMP) Applications
+     SNMP-NOTIFICATION-MIB";
+
+  augment "/serv:services/snmp:snmp" {
+    list notify {
+      key "name";
+      description
+        "List of notify names and tags";
+      reference "SNMP-NOTIFY-MIB.snmpNotifyTable";
+      leaf name {
+        type snmp:identifier;
+        description
+          "an arbitrary name for the list entry";
+        reference "SNMP-NOTIFY-MIB.snmpNotifyName";
+      }
+      leaf tag {
+        type snmp:identifier;
+        mandatory true;
+        description
+          "target tag, selects a set of notification targets";
+        reference "SNMP-NOTIFY-MIB.snmpNotifyTag";
+      }
+      leaf type {
+        type enumeration {
+          enum "trap" {
+            value 1;
+          }
+          enum "inform" {
+            value 2;
+          }
+        }
+        default "trap";
+        description
+          "Defines notification type to be generated";
+        reference "SNMP-NOTIFY-MIB.snmpNotifyType";
+      }
+    }
+  }
+}

@@ -1,0 +1,735 @@
+module mds-certmgr {
+  namespace "com:gemds:mds-certmgr";
+  prefix cm;
+
+  import ietf-netconf-acm {
+    prefix nacm;
+  }
+  import mds-common {
+    prefix mds-common;
+  }
+
+  organization "GE MDS LLC";
+  contact
+    "T 1-800-474-0694 (Toll Free in North America)
+     T 585-242-9600
+     F 585-242-9620
+     
+     175 Science Parkway
+     Rochester, New York 14620
+     USA
+    ";
+  description
+    "This module contains a collection of YANG definitions for
+     PKI certificates.
+          
+     Copyright (c) 2013 by GE MDS LLC. All rights reserved.";
+
+  revision 2015-06-30 {
+    description
+      "Updated description for cert-server-identity, 
+       certificate-info-identity, and ca-issuer-identity.";
+  }
+  revision 2015-04-13 {
+    description
+      "Changed path for certificates. Restructure actions.";
+  }
+  revision 2013-06-21 {
+    description
+      "Rework of model to remove basename concept.";
+  }
+  revision 2013-01-30 {
+    description
+      "Baseline revision for release.";
+  }
+  revision 2012-12-28 {
+    description
+      "Year end stable.";
+  }
+
+  typedef x509-cert-vers {
+    type uint8 {
+      range "0 .. 2";
+    }
+    default "0";
+    description
+      "Version of current X.509 certificate, v1(0)";
+  }
+
+  typedef x509-utcTime {
+    type string {
+      pattern "[0-9][0-9][0-1][1-9][0-3][1-9][0-2][0-3][0-5][0-9]Z";
+    }
+    description
+      "UTC time as YYMMDDHHMMSSZ where last char 'Z' is for
+       Zulu time";
+  }
+
+  typedef certmgr-digest-algo {
+    type enumeration {
+      enum "md5" {
+        value 0;
+      }
+      enum "sha1" {
+        value 1;
+      }
+      enum "sha256" {
+        value 2;
+      }
+      enum "sha384" {
+        value 3;
+      }
+      enum "sha512" {
+        value 4;
+      }
+    }
+  }
+
+  typedef certmgr-enc-algo {
+    type enumeration {
+      enum "des_cbc" {
+        value 0;
+      }
+      enum "3des_cbc" {
+        value 1;
+      }
+      enum "aes128_cbc" {
+        value 2;
+      }
+      enum "aes192_cbc" {
+        value 3;
+      }
+      enum "aes256_cbc" {
+        value 4;
+      }
+    }
+  }
+
+  typedef cert-mgmt-type {
+    type enumeration {
+      enum "scep";
+    }
+  }
+
+  typedef pki-transaction-id-type {
+    type string {
+      pattern "([0-9a-fA-F]){2}(:([0-9a-fA-F]){2})*";
+    }
+  }
+
+  typedef certmgr-show-cert-format {
+    type enumeration {
+      enum "block" {
+        value 0;
+      }
+      enum "line" {
+        value 1;
+      }
+    }
+  }
+
+  grouping ca-cert-server {
+    leaf cert-server-identity {
+      mandatory true;
+      type leafref {
+        path "/cm:pki/cm:certificate-servers/cm:certificate-server/cm:cert-server-identity";
+      }
+      description
+        "Identity of the certificate server.";
+    }
+    leaf ca-issuer-identity {
+      mandatory true;
+      type leafref {
+        path "/cm:pki/cm:ca-servers/cm:ca-server/cm:ca-issuer-identity";
+      }
+      description
+        "Identity of the issuing CA server.";
+    }
+  }
+
+  grouping client-cert-server {
+    leaf cert-server-identity {
+      mandatory true;
+      type leafref {
+        path "/cm:pki/cm:certificate-servers/cm:certificate-server/cm:cert-server-identity";
+      }
+      description
+        "Identity of the certificate server.";
+    }
+    leaf ca-issuer-identity {
+      mandatory true;
+      type leafref {
+        path "/cm:pki/cm:ca-servers/cm:ca-server/cm:ca-issuer-identity";
+      }
+      description
+        "Identity of the issuing CA server.";
+    }
+    leaf cert-info-identity {
+      mandatory true;
+      type leafref {
+        path "/cm:pki/cm:cert-info/cm:certificate-info/cm:certificate-info-identity";
+      }
+      description
+        "Identity of the certificate info.";
+    }
+    leaf ca-cert-identity {
+      mandatory true;
+      type leafref {
+        path "/cm:pki/cm:ca-certs/cm:show-all/cm:cert-identity";
+      }
+      description
+        "Identity of the CA certificate.";
+    }
+    leaf private-key-identity {
+      mandatory true;
+      type leafref {
+        path "/cm:pki/cm:private-keys/cm:show-all/cm:key-identity";
+      }
+      description
+        "Identity of the private key used to create the new certificate.";
+    }
+    choice trust-info {
+      mandatory true;
+      case challenge {
+        leaf ca-challenge {
+          mandatory true;
+          type string;
+          description
+            "Challenge string from the CA server that must be
+             provided as part of a new client certificate request.";
+        }
+      }
+      case renewal {
+        leaf existing-cert-identity {
+          mandatory true;
+          type leafref {
+            path "/cm:pki/cm:client-certs/cm:show-all/cm:cert-identity";
+          }
+          description
+            "Identity of the existing client certificate.";
+        }
+        leaf existing-private-key-identity {
+          mandatory false;
+          type leafref {
+            path "/cm:pki/cm:private-keys/cm:show-all/cm:key-identity";
+          }
+          description
+            "Identity of the private key used to create the existing client certificate.";
+        }
+      }
+    }
+  }
+
+  grouping cert-retrieval-type {
+    choice cert-type {
+      mandatory true;
+      case ca-cert-show-type {
+        container ca-cert-show-type {
+          presence "ca-cert-show-type";
+          leaf ca-cert-identity {
+            type leafref {
+              path "/cm:pki/cm:ca-certs/cm:show-all/cm:cert-identity";
+            }
+            description
+              "The identity of the CA certificate";
+          }
+        }
+      }
+      case client-cert-show-type {
+        container client-cert-show-type {
+          presence "client-cert-show-type";
+          leaf client-cert-identity {
+            type leafref {
+              path "/cm:pki/cm:client-certs/cm:show-all/cm:cert-identity";
+            }
+            description
+              "The identity of the client certificate";
+          }
+        }
+      }
+      case firmware-cert-show-type {
+        container firmware-cert-show-type {
+          presence "firmware-cert-show-type";
+          leaf firmware-cert-identity {
+            type leafref {
+              path "/cm:pki/cm:firmware-certs/cm:show-all/cm:cert-identity";
+            }
+            description
+              "The identity of the firmware certificate";
+          }
+        }
+      }
+    }
+  }
+
+  grouping key-generation-parameters {
+    leaf key-identity {
+      mandatory true;
+      type string;
+      description
+        "A ID to assign to this key once generated. Will
+         be used to store the key for later retrieval.";
+    }
+    leaf key-size {
+      mandatory true;
+      type enumeration {
+        enum "1024" {
+          value 1024;
+        }
+        enum "1536" {
+          value 1536;
+        }
+        enum "2048" {
+          value 2048;
+        }
+        enum "3072" {
+          value 3072;
+        }
+        enum "4096" {
+          value 4096;
+        }
+      }
+      description
+        "Size of key (in bits) to generate.";
+    }
+  }
+
+  grouping scep-status {
+    leaf last-status {
+      type int32;
+    }
+    leaf poll-count {
+      type int32;
+    }
+    leaf last-state {
+      type string;
+    }
+    leaf req-fp-md5 {
+      type string;
+    }
+    leaf req-fp-sha1 {
+      type string;
+    }
+    leaf req-fp-sha256 {
+      type string;
+    }
+    leaf req-fp-sha512 {
+      type string;
+    }
+  }
+
+  container pki {
+    nacm:default-deny-all;
+    description
+      "Public Key and Certificate Operations.";
+    container private-keys {
+      description
+        "Private Key Operations.";
+      list show-all {
+        config false;
+        description
+          "Lists all private keys.";
+        key "key-identity";
+        leaf key-identity {
+          type string;
+          description
+            "The list of private keys.";
+        }
+        leaf key-length {
+          type uint16;
+        }
+        leaf key-date-time {
+          type string;
+        }
+      }
+      container import-status {
+        config false;
+        description
+          "The current status of importing a private key.";
+        uses mds-common:file-transfer-status;
+      }
+      container import-file-limits {
+        config false;
+        description
+          "The file size limits for an imported private key file.";
+        uses mds-common:file-size-limits;
+      }
+      container generate-status {
+        config false;
+        description
+          "The current status of generating a private key.";
+        uses mds-common:file-transfer-status;
+      }
+    }
+    container ca-certs {
+      description
+        "CA Certificate Operations.";
+      list show-all {
+        config false;
+        description
+          "Lists all CA certificates.";
+        key "cert-identity";
+        leaf cert-identity {
+          type string;
+          description
+            "ID that identifies the certificate on the host.";
+        }
+      }
+      container import-status {
+        config false;
+        description
+          "The current status of importing a CA certificate.";
+        uses mds-common:file-transfer-status;
+      }
+      container import-file-limits {
+        config false;
+        description
+          "The file size limits for an imported CA certificate.";
+        uses mds-common:file-size-limits;
+      }
+    }
+    container client-certs {
+      description
+        "Client Certificate Operations.";
+      list show-all {
+        config false;
+        description
+          "Lists all client certificates.";
+        key "cert-identity";
+        leaf cert-identity {
+          type string;
+          description
+            "ID that identifies the certificate on the host.";
+        }
+      }
+      container import-status {
+        config false;
+        description
+          "The current status of importing a client certificate.";
+        uses mds-common:file-transfer-status;
+      }
+      container import-scep-status {
+        config false;
+        description
+          "The current SCEP status of importing a client certificate.";
+        uses scep-status;
+      }
+      container import-file-limits {
+        config false;
+        description
+          "The file size limits for an imported client certificate.";
+        uses mds-common:file-size-limits;
+      }
+    }
+    container firmware-certs {
+      description
+        "Firmware Certificate Operations.";
+      list show-all {
+        config false;
+        description
+          "Lists all firmware certificates.";
+        leaf cert-identity {
+          type string;
+          description
+            "ID that identifies the certificate on the host.";
+        }
+        leaf cert-hash {
+          type string;
+          description
+            "Hash of the DER-formatted certificate file";
+        }
+      }
+      container import-status {
+        config false;
+        description
+          "The current status of importing a firmware certificate.";
+        uses mds-common:file-transfer-status;
+      }
+      container import-file-limits {
+        config false;
+        description
+          "The file size limits for an imported firmware certificate.";
+        uses mds-common:file-size-limits;
+      }
+    }
+    container certificate-servers {
+      list certificate-server {
+        key "cert-server-identity";
+        leaf cert-server-identity {
+          type string;
+          description
+            "Local identifier for a certificate server used when obtaining
+             a CA or client certificate via the SCEP protocol.";
+        }
+        leaf server-type {
+          type cert-mgmt-type;
+        }
+        description
+          "This list contains details for each authority
+           server to be used. Material that comes back as
+           part of a SCEP call or manual transfer is stored
+           in internal nodes that are not visible to the 
+           outside CLI or Web interface(i.e. filenames).
+           Each server should be identified by a simple,
+           descriptive name such as public-cert or
+           ENG_SCEP_SERVER.";
+      }
+    }
+    container cert-info {
+      list certificate-info {
+        key "certificate-info-identity";
+        leaf certificate-info-identity {
+          type string;
+          description
+            "Local identifier for a set of certificate information.";
+        }
+        leaf country-x509 {
+          type string;
+          description
+            "  ";
+        }
+        leaf state-x509 {
+          type string;
+          description
+            "  ";
+        }
+        leaf locale-x509 {
+          type string;
+          description
+            "  ";
+        }
+        leaf organization-x509 {
+          type string;
+          description
+            "  ";
+        }
+        leaf org-unit-x509 {
+          type string;
+          description
+            "  ";
+        }
+        leaf common-name-x509 {
+          type string;
+          mandatory true;
+          description
+            "  ";
+        }
+        leaf pkcs9-email-x509 {
+          type string;
+          description
+            "  ";
+        }
+        description
+          "This list contains details for each certificate
+           user including Subject: info as contained in cert.
+           Material that comes back as part of a SCEP call 
+           or manual transfer is stored in internal nodes that
+           are not visible to the outside CLI or Web interface
+           (i.e. filenames). Each user should be identified
+           by a simple, descriptive name such 'VPN' or 'WiFi'.";
+      }
+    }
+    container ca-servers {
+      list ca-server {
+        key "ca-issuer-identity";
+        leaf ca-issuer-identity {
+          type string;
+          description
+            "Local identifier for a CA server from which a certificate is
+             being requested using the SCEP protocol.";
+        }
+        leaf ca-fingerprint {
+          type string;
+          description
+            "The fingerprint of the CA as typically shown in text
+             #'s & char a-f (or A-F) in pairs separated by the ':' char
+             usually 16 'hex' values total. However, we will use what
+             is coming back from SCEP add-on (minus spaces)";
+        }
+      }
+    }
+  }
+  rpc show-cert-info {
+    description
+      "Dump identified certificate as text to display";
+    input {
+      uses cert-retrieval-type;
+      leaf cert-show-format {
+        default "block";
+        type certmgr-show-cert-format;
+        description
+          "The text format for the display.";
+      }
+    }
+    output {
+      leaf show-result {
+        mandatory true;
+        type string;
+        description
+          "The textual representation";
+      }
+    }
+  }
+  rpc import-private-key {
+    description
+      "Request the certmgr to retrieve a private key from network store.";
+    input {
+      uses mds-common:external-file;
+      leaf key-identity {
+        mandatory true;
+        type string;
+        description
+          "A ID to assign to this key once retrieved. Will
+           be used to store the key for later retrieval.";
+      }
+      leaf passphrase {
+        mandatory false;
+        type string;
+        default "";
+        description
+          "Password used if transmission is an encrypted PEM";
+      }
+    }
+  }
+  rpc cancel-import-private-key {
+    description
+      "Cancel a private key import.";
+  }
+  rpc delete-private-key {
+    description
+      "Delete identified key and associated info file.";
+    input {
+      leaf key-identity {
+        mandatory true;
+        type leafref {
+          path "/cm:pki/cm:private-keys/cm:show-all/cm:key-identity";
+        }
+        description
+          "An ID assigned to identify this key pair.";
+      }
+    }
+  }
+  rpc generate-private-key {
+    description
+      "Generate a key pair.";
+    input {
+      uses key-generation-parameters;
+    }
+  }
+  rpc cancel-generate-private-key {
+    description
+      "Cancel a private key generation.";
+  }
+  rpc import-ca-cert {
+    description
+      "Import CA certificate file from a network server.";
+    input {
+      choice ca-cert-source {
+        case efile {
+          container file {
+            uses mds-common:external-file;
+          }
+        }
+        case scepserver {
+          container scep {
+            uses ca-cert-server;
+          }
+        }
+      }
+      leaf cert-identity {
+        type string;
+        description
+          "ID that identifies the certificate on the host.";
+      }
+    }
+  }
+  rpc cancel-import-ca-cert {
+    description
+      "Cancel a CA certificate import.";
+  }
+  rpc delete-ca-cert {
+    description
+      "Delete identified CA certificate";
+    input {
+      leaf cert-identity {
+        mandatory true;
+        type leafref {
+          path "/cm:pki/cm:ca-certs/cm:show-all/cm:cert-identity";
+        }
+        description
+          "ID that identifies the certificate on the host.";
+      }
+    }
+  }
+  rpc import-client-cert {
+    description
+      "Import client certificate file from a network server.";
+    input {
+      choice client-cert-source {
+        case efile {
+          container file {
+            uses mds-common:external-file;
+          }
+        }
+        case scepserver {
+          container scep {
+            uses client-cert-server;
+          }
+        }
+      }
+      leaf cert-identity {
+        type string;
+        description
+          "ID that identifies the certificate on the host.";
+      }
+    }
+  }
+  rpc cancel-import-client-cert {
+    description
+      "Cancel a client certificate import.";
+  }
+  rpc delete-client-cert {
+    description
+      "Delete identified client certificate";
+    input {
+      leaf cert-identity {
+        mandatory true;
+        type leafref {
+          path "/cm:pki/cm:client-certs/cm:show-all/cm:cert-identity";
+        }
+        description
+          "ID that identifies the certificate on the host.";
+      }
+    }
+  }
+  rpc import-firmware-cert {
+    description
+      "Import firmware certificate file from a network server.";
+    input {
+      uses mds-common:external-file;
+      leaf cert-identity {
+        type string;
+        description
+          "ID that identifies the certificate on the host.";
+      }
+    }
+  }
+  rpc cancel-import-firmware-cert {
+    description
+      "Cancel a firmware certificate import.";
+  }
+  rpc delete-firmware-cert {
+    description
+      "Delete identified firmware certificate";
+    input {
+      leaf cert-identity {
+        mandatory true;
+        type leafref {
+          path "/cm:pki/cm:firmware-certs/cm:show-all/cm:cert-identity";
+        }
+        description
+          "ID that identifies the certificate on the host.";
+      }
+    }
+  }
+}
